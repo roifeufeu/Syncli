@@ -77,121 +77,6 @@ function ClipboardHistory({ refreshKey }) {
 
   useEffect(() => {
     let active = true;
-    let realtimeChannel = null;
-
-    const startRealtimeTest = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (!active) return;
-
-      if (error || !session) {
-        console.warn("[Realtime] Session indisponible");
-        return;
-      }
-
-      const config = {
-        schema: "public",
-        table: "clipboard_items",
-        filter: `user_id=eq.${session.user.id}`,
-      };
-
-      realtimeChannel = supabase
-        .channel("syncli-realtime-test")
-
-        .on(
-          "postgres_changes",
-          { ...config, event: "INSERT" },
-          async (payload) => {
-            const newItem = payload.new;
-
-            console.log("[Realtime] Nouvel élément :", newItem.id);
-
-            // Vérifier que l'élément appartient au compte connecté.
-            if (newItem.user_id !== session.user.id) return;
-
-            // Ignorer les types non pris en charge.
-            if (!["text", "image"].includes(newItem.type)) return;
-
-            // Ignorer les éléments déjà expirés.
-            if (
-              newItem.expires_at &&
-              new Date(newItem.expires_at).getTime() <= Date.now()
-            ) {
-              return;
-            }
-
-            let itemToAdd = newItem;
-
-            // Générer une URL temporaire pour les images.
-            if (newItem.type === "image" && newItem.storage_path) {
-              const { data, error } = await supabase.storage
-                .from("clipboard-images")
-                .createSignedUrl(newItem.storage_path, 3600);
-
-              if (!active) return;
-
-              if (error) {
-                console.error("[Realtime] Erreur URL image :", error);
-
-                itemToAdd = {
-                  ...newItem,
-                  image_url: null,
-                };
-              } else {
-                itemToAdd = {
-                  ...newItem,
-                  image_url: data.signedUrl,
-                };
-              }
-            }
-
-            if (!active) return;
-
-            setItems((previousItems) => {
-              // Éviter les doublons avec le chargement classique.
-              if (previousItems.some((item) => item.id === itemToAdd.id)) {
-                return previousItems;
-              }
-
-              // Respecter l'ordre chronologique.
-              return [itemToAdd, ...previousItems].sort(
-                (a, b) =>
-                  new Date(b.created_at).getTime() -
-                  new Date(a.created_at).getTime(),
-              );
-            });
-          },
-        )
-
-        .on("postgres_changes", { ...config, event: "UPDATE" }, (payload) => {
-          console.log("[Realtime] Élément modifié :", payload.new.id);
-        })
-
-        .subscribe((status, subscribeError) => {
-          console.log("[Realtime] Statut :", status);
-
-          if (subscribeError) {
-            console.error("[Realtime] Erreur :", subscribeError);
-          }
-        });
-    };
-
-    void startRealtimeTest();
-
-    return () => {
-      active = false;
-
-      if (realtimeChannel) {
-        void supabase.removeChannel(realtimeChannel);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
     let deletionChannel = null;
 
     const startDeletionSync = async () => {
@@ -341,6 +226,147 @@ function ClipboardHistory({ refreshKey }) {
       setMessage("Impossible de copier le texte");
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    let realtimeChannel = null;
+    let hasSubscribed = false;
+
+    const startRealtimeTest = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      if (error || !session) {
+        console.warn("[Realtime] Session indisponible");
+        return;
+      }
+
+      const config = {
+        schema: "public",
+        table: "clipboard_items",
+        filter: `user_id=eq.${session.user.id}`,
+      };
+
+      realtimeChannel = supabase
+        .channel("syncli-realtime-test")
+
+        .on(
+          "postgres_changes",
+          { ...config, event: "INSERT" },
+          async (payload) => {
+            const newItem = payload.new;
+
+            console.log("[Realtime] Nouvel élément :", newItem.id);
+
+            // Vérifier que l'élément appartient au compte connecté.
+            if (newItem.user_id !== session.user.id) return;
+
+            // Ignorer les types non pris en charge.
+            if (!["text", "image"].includes(newItem.type)) return;
+
+            // Ignorer les éléments déjà expirés.
+            if (
+              newItem.expires_at &&
+              new Date(newItem.expires_at).getTime() <= Date.now()
+            ) {
+              return;
+            }
+
+            let itemToAdd = newItem;
+
+            // Générer une URL temporaire pour les images.
+            if (newItem.type === "image" && newItem.storage_path) {
+              const { data, error } = await supabase.storage
+                .from("clipboard-images")
+                .createSignedUrl(newItem.storage_path, 3600);
+
+              if (!active) return;
+
+              if (error) {
+                console.error("[Realtime] Erreur URL image :", error);
+
+                itemToAdd = {
+                  ...newItem,
+                  image_url: null,
+                };
+              } else {
+                itemToAdd = {
+                  ...newItem,
+                  image_url: data.signedUrl,
+                };
+              }
+            }
+
+            if (!active) return;
+
+            setItems((previousItems) => {
+              // Éviter les doublons avec le chargement classique.
+              if (previousItems.some((item) => item.id === itemToAdd.id)) {
+                return previousItems;
+              }
+
+              // Respecter l'ordre chronologique.
+              return [itemToAdd, ...previousItems].sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime(),
+              );
+            });
+          },
+        )
+
+        .on("postgres_changes", { ...config, event: "UPDATE" }, (payload) => {
+          console.log("[Realtime] Élément modifié :", payload.new.id);
+        })
+
+        .subscribe((status, subscribeError) => {
+          console.log("[Realtime] Statut :", status);
+
+          if (subscribeError) {
+            console.error("[Realtime] Erreur :", subscribeError);
+          }
+
+          if (status === "SUBSCRIBED" && active) {
+            if (hasSubscribed) {
+              console.log("[Realtime] Reconnexion : synchronisation");
+              void loadHistory();
+            }
+
+            hasSubscribed = true;
+          }
+        });
+    };
+
+    void startRealtimeTest();
+
+    return () => {
+      active = false;
+
+      if (realtimeChannel) {
+        void supabase.removeChannel(realtimeChannel);
+      }
+    };
+  }, [loadHistory]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[Syncli] Retour sur l'onglet : actualisation");
+
+        void loadHistory();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadHistory]);
 
   const downloadImage = async (imageUrl, filename) => {
     try {
