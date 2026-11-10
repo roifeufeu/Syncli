@@ -191,6 +191,71 @@ function ClipboardHistory({ refreshKey }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    let deletionChannel = null;
+
+    const startDeletionSync = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      if (error || !session) {
+        console.warn("[Broadcast] Session indisponible");
+        return;
+      }
+
+      // Authentification pour les canaux privés.
+      await supabase.realtime.setAuth(session.access_token);
+
+      if (!active) return;
+
+      deletionChannel = supabase
+        .channel(`syncli:deletions:${session.user.id}`, {
+          config: {
+            private: true,
+          },
+        })
+        .on("broadcast", { event: "item_deleted" }, ({ payload }) => {
+          if (!active) return;
+
+          const deletedId = payload?.id;
+
+          if (deletedId === undefined || deletedId === null) {
+            return;
+          }
+
+          console.log("[Broadcast] Élément supprimé :", deletedId);
+
+          setItems((previousItems) =>
+            previousItems.filter(
+              (item) => String(item.id) !== String(deletedId),
+            ),
+          );
+        })
+        .subscribe((status, subscribeError) => {
+          console.log("[Broadcast] Statut :", status);
+
+          if (subscribeError) {
+            console.error("[Broadcast] Erreur :", subscribeError);
+          }
+        });
+    };
+
+    void startDeletionSync();
+
+    return () => {
+      active = false;
+
+      if (deletionChannel) {
+        void supabase.removeChannel(deletionChannel);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (message !== "Élément supprimé") return;
 
     const timeout = setTimeout(() => {
@@ -237,7 +302,13 @@ function ClipboardHistory({ refreshKey }) {
         throw new Error(data.error || "Impossible de charger l'historique.");
       }
 
-      setItems(data.items);
+      const now = Date.now();
+
+      const validItems = data.items.filter(
+        (item) => !item.expires_at || new Date(item.expires_at).getTime() > now,
+      );
+
+      setItems(validItems);
       setLoadError("");
     } catch (error) {
       if (error instanceof TypeError) {
