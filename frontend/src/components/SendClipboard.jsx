@@ -36,10 +36,10 @@ function SendClipboard({ onItemAdded }) {
 
   const ignoreNextClickRef = useRef(false);
 
-  const updateImages = (nextImages) => {
+  const updateImages = useCallback((nextImages) => {
     imagesRef.current = nextImages;
     setImages(nextImages);
-  };
+  }, []);
 
   // Libérer les URL de prévisualisation à la fermeture.
   useEffect(() => {
@@ -71,47 +71,79 @@ function SendClipboard({ onItemAdded }) {
 
   // Logique commune de sélection des images.
   // Elle pourra être réutilisée pour le drop et Ctrl+V.
-  const addImages = (files) => {
-    if (sendingRef.current || files.length === 0) return;
+  const addImages = useCallback(
+    (files) => {
+      if (sendingRef.current || files.length === 0) return;
 
-    const previous = imagesRef.current;
+      const previous = imagesRef.current;
 
-    if (previous.length + files.length > MAX_IMAGES) {
-      setMessage(
-        `Vous pouvez sélectionner ${MAX_IMAGES} images maximum à la fois.`,
+      if (previous.length + files.length > MAX_IMAGES) {
+        setMessage(
+          `Vous pouvez sélectionner ${MAX_IMAGES} images maximum à la fois.`,
+        );
+        return;
+      }
+
+      const invalid = files.find(
+        (file) => !ALLOWED_IMAGE_TYPES.includes(file.type),
       );
-      return;
-    }
 
-    const invalid = files.find(
-      (file) => !ALLOWED_IMAGE_TYPES.includes(file.type),
-    );
+      if (invalid) {
+        setMessage(
+          `Format non autorisé : ${invalid.name} (JPG, PNG, WebP ou GIF).`,
+        );
+        return;
+      }
 
-    if (invalid) {
-      setMessage(
-        `Format non autorisé : ${invalid.name} (JPG, PNG, WebP ou GIF).`,
-      );
-      return;
-    }
+      const tooLarge = files.find((file) => file.size > MAX_IMAGE_SIZE);
 
-    const tooLarge = files.find((file) => file.size > MAX_IMAGE_SIZE);
+      if (tooLarge) {
+        setMessage(
+          `Image trop volumineuse : ${tooLarge.name} (10 Mo maximum par image).`,
+        );
+        return;
+      }
 
-    if (tooLarge) {
-      setMessage(
-        `Image trop volumineuse : ${tooLarge.name} (10 Mo maximum par image).`,
-      );
-      return;
-    }
+      const newImages = files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
 
-    const newImages = files.map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
+      updateImages([...previous, ...newImages]);
+      setMessage("");
+    },
+    [updateImages],
+  );
 
-    updateImages([...previous, ...newImages]);
-    setMessage("");
-  };
+  useEffect(() => {
+    const handlePaste = (event) => {
+      if (sendingRef.current || event.defaultPrevented) return;
+
+      // Récupérer les images présentes dans le presse-papiers.
+      const pastedImages = Array.from(event.clipboardData?.items || [])
+        .filter(
+          (item) => item.kind === "file" && item.type.startsWith("image/"),
+        )
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+
+      // Si aucune image n'est présente,
+      // laisser fonctionner le collage de texte normalement.
+      if (pastedImages.length === 0) return;
+
+      event.preventDefault();
+
+      // Réutiliser nos validations existantes.
+      addImages(pastedImages);
+    };
+
+    window.addEventListener("paste", handlePaste);
+
+    return () => {
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [addImages]);
 
   const handleImageChange = (event) => {
     addImages(Array.from(event.target.files || []));
