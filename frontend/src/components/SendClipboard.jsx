@@ -20,6 +20,8 @@ function SendClipboard({ onItemAdded }) {
   const fileInputRef = useRef(null);
   const sendingRef = useRef(false);
   const imagesRef = useRef([]);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const [previewId, setPreviewId] = useState(null);
 
@@ -114,6 +116,58 @@ function SendClipboard({ onItemAdded }) {
   const handleImageChange = (event) => {
     addImages(Array.from(event.target.files || []));
     event.target.value = "";
+  };
+
+  // Vérifier que le glissement contient des fichiers.
+  const isFileDrag = (event) => {
+    return Array.from(event.dataTransfer?.types || []).includes("Files");
+  };
+
+  const handleDragEnter = (event) => {
+    if (!isFileDrag(event)) return;
+
+    event.preventDefault();
+
+    if (sendingRef.current) return;
+
+    dragCounterRef.current += 1;
+    setIsDraggingFiles(true);
+  };
+
+  const handleDragOver = (event) => {
+    if (!isFileDrag(event)) return;
+
+    event.preventDefault();
+
+    event.dataTransfer.dropEffect = sendingRef.current ? "none" : "copy";
+  };
+
+  const handleDragLeave = (event) => {
+    if (!isFileDrag(event)) return;
+
+    event.preventDefault();
+
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+
+    if (dragCounterRef.current === 0) {
+      setIsDraggingFiles(false);
+    }
+  };
+
+  const handleDrop = (event) => {
+    if (!isFileDrag(event)) return;
+
+    event.preventDefault();
+
+    dragCounterRef.current = 0;
+    setIsDraggingFiles(false);
+
+    if (sendingRef.current) return;
+
+    const droppedFiles = Array.from(event.dataTransfer.files);
+
+    // Réutiliser la même validation que le bouton de sélection.
+    addImages(droppedFiles);
   };
 
   const removeImage = (id) => {
@@ -415,7 +469,13 @@ function SendClipboard({ onItemAdded }) {
   const previewIndex = images.findIndex((item) => item.id === previewId);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
       <div className="mb-5">
         <h2 className="text-xl font-semibold text-slate-900">Envoyer</h2>
 
@@ -434,140 +494,158 @@ function SendClipboard({ onItemAdded }) {
         hidden
       />
 
-      {images.length === 0 ? (
-        <>
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="Collez votre texte ici..."
-            rows={7}
-            disabled={isSending}
-            className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
+      <div className="relative">
+        {isDraggingFiles && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-6 text-center">
+            <ImagePlus size={42} className="text-blue-600" />
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={chooseImage}
+            <p className="text-lg font-semibold text-blue-700">
+              Déposez vos images ici
+            </p>
+
+            <p className="text-sm text-blue-600">JPG, PNG, WebP ou GIF</p>
+
+            <p className="text-xs text-blue-500">
+              10 images maximum · 10 Mo par image
+            </p>
+          </div>
+        )}
+
+        {images.length === 0 ? (
+          <>
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Collez votre texte ici..."
+              rows={7}
               disabled={isSending}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-            >
-              <ImagePlus size={18} />
-              Joindre des images
-            </button>
+              className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
 
-            <button
-              type="button"
-              onClick={sendText}
-              disabled={isSending || !text.trim()}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
-            >
-              <Send size={17} />
-              {isSending ? "Envoi en cours..." : "Envoyer le texte"}
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Galerie horizontale */}
-          <div
-            ref={galleryRef}
-            onMouseDown={startGalleryDrag}
-            onMouseMove={moveGalleryDrag}
-            onMouseUp={stopGalleryDrag}
-            onMouseLeave={stopGalleryDrag}
-            className="flex cursor-grab select-none gap-3 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4 pb-3 active:cursor-grabbing"
-          >
-            {images.map((item) => (
-              <div
-                key={item.id}
-                className="relative w-[min(70vw,32rem)] shrink-0"
-              >
-                {/* Image cliquable pour l'agrandir */}
-                <button
-                  type="button"
-                  onClick={() => openPreview(item.id)}
-                  className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-64"
-                  aria-label={`Agrandir ${item.file.name}`}
-                >
-                  <img
-                    src={item.previewUrl}
-                    alt={item.file.name}
-                    draggable={false}
-                    className="pointer-events-none h-full w-full object-contain"
-                  />
-                </button>
-
-                {/* Retirer l'image de la sélection */}
-                <button
-                  type="button"
-                  data-no-gallery-drag
-                  onClick={() => removeImage(item.id)}
-                  disabled={isSending}
-                  aria-label={`Retirer ${item.file.name}`}
-                  className="absolute right-2 top-2 rounded-full bg-slate-900/70 p-2 text-white transition hover:bg-slate-900 disabled:opacity-60"
-                >
-                  <X size={17} />
-                </button>
-
-                <p
-                  className="mt-2 truncate text-sm text-slate-700"
-                  title={item.file.name}
-                >
-                  {item.file.name}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Compteur et ajout */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
-            <span>
-              {images.length} / {MAX_IMAGES} images · {sizeInMo(totalSize)} Mo
-              au total
-            </span>
-
-            {images.length < MAX_IMAGES && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={chooseImage}
                 disabled={isSending}
-                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
               >
-                <ImagePlus size={17} />
-                Ajouter des images
+                <ImagePlus size={18} />
+                Joindre des images
               </button>
-            )}
-          </div>
 
-          {/* Actions */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={clearImages}
-              disabled={isSending}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              <button
+                type="button"
+                onClick={sendText}
+                disabled={isSending || !text.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Send size={17} />
+                {isSending ? "Envoi en cours..." : "Envoyer le texte"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Galerie horizontale */}
+            <div
+              ref={galleryRef}
+              onMouseDown={startGalleryDrag}
+              onMouseMove={moveGalleryDrag}
+              onMouseUp={stopGalleryDrag}
+              onMouseLeave={stopGalleryDrag}
+              className="flex cursor-grab select-none gap-3 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4 pb-3 active:cursor-grabbing"
             >
-              <X size={17} />
-              Annuler
-            </button>
+              {images.map((item) => (
+                <div
+                  key={item.id}
+                  className="relative w-[min(70vw,32rem)] shrink-0"
+                >
+                  {/* Image cliquable pour l'agrandir */}
+                  <button
+                    type="button"
+                    onClick={() => openPreview(item.id)}
+                    className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-64"
+                    aria-label={`Agrandir ${item.file.name}`}
+                  >
+                    <img
+                      src={item.previewUrl}
+                      alt={item.file.name}
+                      draggable={false}
+                      className="pointer-events-none h-full w-full object-contain"
+                    />
+                  </button>
 
-            <button
-              type="button"
-              onClick={sendImages}
-              disabled={isSending}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              <Send size={17} />
-              {isSending
-                ? "Envoi en cours..."
-                : `Envoyer ${images.length} image${
-                    images.length > 1 ? "s" : ""
-                  }`}
-            </button>
-          </div>
-        </>
-      )}
+                  {/* Retirer l'image de la sélection */}
+                  <button
+                    type="button"
+                    data-no-gallery-drag
+                    onClick={() => removeImage(item.id)}
+                    disabled={isSending}
+                    aria-label={`Retirer ${item.file.name}`}
+                    className="absolute right-2 top-2 rounded-full bg-slate-900/70 p-2 text-white transition hover:bg-slate-900 disabled:opacity-60"
+                  >
+                    <X size={17} />
+                  </button>
+
+                  <p
+                    className="mt-2 truncate text-sm text-slate-700"
+                    title={item.file.name}
+                  >
+                    {item.file.name}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Compteur et ajout */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span>
+                {images.length} / {MAX_IMAGES} images · {sizeInMo(totalSize)} Mo
+                au total
+              </span>
+
+              {images.length < MAX_IMAGES && (
+                <button
+                  type="button"
+                  onClick={chooseImage}
+                  disabled={isSending}
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                >
+                  <ImagePlus size={17} />
+                  Ajouter des images
+                </button>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={clearImages}
+                disabled={isSending}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                <X size={17} />
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={sendImages}
+                disabled={isSending}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Send size={17} />
+                {isSending
+                  ? "Envoi en cours..."
+                  : `Envoyer ${images.length} image${
+                      images.length > 1 ? "s" : ""
+                    }`}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Aperçu agrandi */}
       {previewImage && (
@@ -637,6 +715,13 @@ function SendClipboard({ onItemAdded }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Messages de réussite ou d'erreur */}
+      {message && (
+        <p role="status" className="mt-4 text-sm text-slate-600">
+          {message}
+        </p>
       )}
     </section>
   );
