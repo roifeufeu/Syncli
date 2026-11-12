@@ -4,6 +4,9 @@ import {
   ChevronUp,
   Copy,
   Loader2,
+  FileArchive,
+  FileSpreadsheet,
+  Presentation,
   Download,
   FileText,
   Image as ImageIcon,
@@ -266,7 +269,7 @@ function ClipboardHistory({ refreshKey }) {
             if (newItem.user_id !== session.user.id) return;
 
             // Ignorer les types non pris en charge.
-            if (!["text", "image"].includes(newItem.type)) return;
+            if (!["text", "image", "file"].includes(newItem.type)) return;
 
             // Ignorer les éléments déjà expirés.
             if (
@@ -278,25 +281,36 @@ function ClipboardHistory({ refreshKey }) {
 
             let itemToAdd = newItem;
 
-            // Générer une URL temporaire pour les images.
-            if (newItem.type === "image" && newItem.storage_path) {
+            // Générer une URL temporaire pour les images et documents.
+            if (
+              ["image", "file"].includes(newItem.type) &&
+              newItem.storage_path
+            ) {
+              const bucket =
+                newItem.type === "image"
+                  ? "clipboard-images"
+                  : "clipboard-files";
+
+              const urlField =
+                newItem.type === "image" ? "image_url" : "file_url";
+
               const { data, error } = await supabase.storage
-                .from("clipboard-images")
+                .from(bucket)
                 .createSignedUrl(newItem.storage_path, 3600);
 
               if (!active) return;
 
               if (error) {
-                console.error("[Realtime] Erreur URL image :", error);
+                console.error("[Realtime] Erreur URL fichier :", error);
 
                 itemToAdd = {
                   ...newItem,
-                  image_url: null,
+                  [urlField]: null,
                 };
               } else {
                 itemToAdd = {
                   ...newItem,
-                  image_url: data.signedUrl,
+                  [urlField]: data.signedUrl,
                 };
               }
             }
@@ -368,7 +382,7 @@ function ClipboardHistory({ refreshKey }) {
     };
   }, [loadHistory]);
 
-  const downloadImage = async (imageUrl, filename) => {
+  const downloadFile = async (imageUrl, filename) => {
     try {
       const response = await fetch(imageUrl);
 
@@ -388,7 +402,7 @@ function ClipboardHistory({ refreshKey }) {
 
       URL.revokeObjectURL(blobUrl);
     } catch {
-      setMessage("Impossible de télécharger l'image");
+      setMessage("Impossible de télécharger le fichier");
     }
   };
 
@@ -495,6 +509,7 @@ function ClipboardHistory({ refreshKey }) {
           {[
             { value: "all", label: "Tous" },
             { value: "text", label: "Textes" },
+            { value: "file", label: "Fichiers" },
             { value: "image", label: "Images" },
           ].map((option) => (
             <button
@@ -535,6 +550,20 @@ function ClipboardHistory({ refreshKey }) {
           {visibleItems.map((item) => {
             const isExpanded = expandedIds.includes(item.id);
             const text = item.text_content || "";
+
+            const extension = (item.original_filename || "")
+              .split(".")
+              .pop()
+              .toLowerCase();
+
+            const DocumentIcon =
+              extension === "zip"
+                ? FileArchive
+                : ["xls", "xlsx", "csv"].includes(extension)
+                  ? FileSpreadsheet
+                  : ["ppt", "pptx"].includes(extension)
+                    ? Presentation
+                    : FileText;
 
             const isLong = text.length > 120 || text.split(/\r?\n/).length > 3;
 
@@ -584,7 +613,7 @@ function ClipboardHistory({ refreshKey }) {
                       </button>
                     )}
                   </>
-                ) : (
+                ) : item.type === "image" ? (
                   /* Carte IMAGE */
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     {/* Miniature */}
@@ -628,7 +657,7 @@ function ClipboardHistory({ refreshKey }) {
                             <button
                               type="button"
                               onClick={() =>
-                                downloadImage(
+                                downloadFile(
                                   item.image_url,
                                   item.original_filename,
                                 )
@@ -657,9 +686,69 @@ function ClipboardHistory({ refreshKey }) {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  /* Carte FICHIER */
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    {/* Icône du document */}
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                      <DocumentIcon size={36} className="text-blue-600" />
+                    </div>
+
+                    {/* Informations */}
+                    <div className="min-w-0 flex-1">
+                      <p className="break-all font-medium text-slate-900">
+                        {item.original_filename || "Fichier"}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        {extension.toUpperCase()} · {sizeLabel(item.file_size)}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        {/* Dates */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                          <span>{ageLabel(item.created_at)}</span>
+                          <span>{expirationLabel(item.expires_at)}</span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              downloadFile(
+                                item.file_url,
+                                item.original_filename,
+                              )
+                            }
+                            disabled={!item.file_url}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Download size={16} />
+                            Télécharger
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={deletingId !== null}
+                            onClick={() => deleteItem(item.id)}
+                            aria-label="Supprimer le fichier"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 size={17} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={17} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Dates et actions TEXTE */}
+
                 {item.type === "text" && (
                   <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">

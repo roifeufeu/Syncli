@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, FileUp, FileText, Send, X } from "lucide-react";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGES = 10;
@@ -11,15 +11,34 @@ const ALLOWED_IMAGE_TYPES = [
   "image/gif",
 ];
 
+const MAX_DOCUMENT_SIZE = 20 * 1000 * 1000;
+const MAX_DOCUMENTS = 10;
+
+const ALLOWED_DOCUMENT_EXTENSIONS = [
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "txt",
+  "csv",
+  "zip",
+];
+
 function SendClipboard({ onItemAdded }) {
   const [text, setText] = useState("");
   const [images, setImages] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
   const fileInputRef = useRef(null);
   const sendingRef = useRef(false);
   const imagesRef = useRef([]);
+  const documentsRef = useRef([]);
+  const documentInputRef = useRef(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -40,6 +59,82 @@ function SendClipboard({ onItemAdded }) {
     imagesRef.current = nextImages;
     setImages(nextImages);
   }, []);
+
+  const updateDocuments = (nextDocuments) => {
+    documentsRef.current = nextDocuments;
+    setDocuments(nextDocuments);
+  };
+
+  const chooseDocument = () => {
+    documentInputRef.current?.click();
+  };
+
+  const addDocuments = (files) => {
+    if (sendingRef.current || files.length === 0) return;
+
+    if (imagesRef.current.length > 0) {
+      setMessage(
+        "Termine ou annule l'envoi des images avant de sélectionner des fichiers.",
+      );
+      return;
+    }
+
+    const previous = documentsRef.current;
+
+    if (previous.length + files.length > MAX_DOCUMENTS) {
+      setMessage(`Vous pouvez sélectionner ${MAX_DOCUMENTS} fichiers maximum.`);
+      return;
+    }
+
+    const invalid = files.find((file) => {
+      const extension = file.name.split(".").pop().toLowerCase();
+      return !ALLOWED_DOCUMENT_EXTENSIONS.includes(extension);
+    });
+
+    if (invalid) {
+      setMessage(`Format de fichier non autorisé : ${invalid.name}`);
+      return;
+    }
+
+    const tooLarge = files.find((file) => file.size > MAX_DOCUMENT_SIZE);
+
+    if (tooLarge) {
+      setMessage(`Fichier trop volumineux : ${tooLarge.name} (20 Mo maximum).`);
+      return;
+    }
+
+    const newDocuments = files.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+    }));
+
+    updateDocuments([...previous, ...newDocuments]);
+    setMessage("");
+  };
+
+  const handleDocumentChange = (event) => {
+    addDocuments(Array.from(event.target.files || []));
+    event.target.value = "";
+  };
+
+  const removeDocument = (id) => {
+    if (sendingRef.current) return;
+
+    updateDocuments(documentsRef.current.filter((item) => item.id !== id));
+    setMessage("");
+  };
+
+  const clearDocuments = () => {
+    if (sendingRef.current) return;
+
+    updateDocuments([]);
+
+    if (documentInputRef.current) {
+      documentInputRef.current.value = "";
+    }
+
+    setMessage("");
+  };
 
   // Libérer les URL de prévisualisation à la fermeture.
   useEffect(() => {
@@ -74,6 +169,13 @@ function SendClipboard({ onItemAdded }) {
   const addImages = useCallback(
     (files) => {
       if (sendingRef.current || files.length === 0) return;
+
+      if (documentsRef.current.length > 0) {
+        setMessage(
+          "Termine ou annule l'envoi des fichiers avant de sélectionner des images.",
+        );
+        return;
+      }
 
       const previous = imagesRef.current;
 
@@ -390,6 +492,106 @@ function SendClipboard({ onItemAdded }) {
     }
   };
 
+  const sendDocuments = async () => {
+    if (documentsRef.current.length === 0 || sendingRef.current) {
+      return;
+    }
+
+    sendingRef.current = true;
+    setIsSending(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        setMessage(
+          "Impossible de vérifier la session. Reconnecte-toi puis réessaie.",
+        );
+        return;
+      }
+
+      const queue = [...documentsRef.current];
+      const sentIds = new Set();
+      const failedNames = [];
+      let sessionExpired = false;
+      let firstError = "";
+
+      for (const item of queue) {
+        const formData = new FormData();
+
+        // Correspond au champ attendu par Multer dans /items/file.
+        formData.append("file", item.file);
+
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL}/items/file`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: formData,
+            },
+          );
+
+          if (response.status === 401) {
+            sessionExpired = true;
+            break;
+          }
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+
+            if (!firstError) {
+              firstError = data.error || "Erreur lors de l'envoi";
+            }
+
+            failedNames.push(item.file.name);
+            continue;
+          }
+
+          sentIds.add(item.id);
+        } catch {
+          failedNames.push(item.file.name);
+
+          if (!firstError) {
+            firstError = "Impossible de contacter le serveur";
+          }
+        }
+      }
+
+      // Conserver les fichiers qui n'ont pas été envoyés.
+      updateDocuments(queue.filter((item) => !sentIds.has(item.id)));
+
+      if (sentIds.size > 0) {
+        onItemAdded?.();
+      }
+
+      if (sessionExpired) {
+        setMessage(
+          `${sentIds.size} fichier(s) envoyé(s). Session expirée : reconnecte-toi avant de réessayer.`,
+        );
+      } else if (failedNames.length > 0) {
+        setMessage(
+          `${sentIds.size} fichier(s) envoyé(s), ${failedNames.length} échec(s). ${firstError}. Les fichiers non envoyés restent sélectionnés.`,
+        );
+      } else {
+        setMessage(
+          sentIds.size === 1 ? "Fichier enregistré" : "Fichiers enregistrés",
+        );
+      }
+    } catch {
+      setMessage("Impossible de traiter l'envoi des fichiers");
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
+    }
+  };
+
   const totalSize = images.reduce((sum, item) => sum + item.file.size, 0);
 
   const sizeInMo = (bytes) =>
@@ -452,22 +654,25 @@ function SendClipboard({ onItemAdded }) {
   };
 
   // Passer à l'image précédente ou suivante
-  const movePreview = useCallback((direction) => {
-    setPreviewId((currentId) => {
-      const available = imagesRef.current;
+  const movePreview = useCallback(
+    (direction) => {
+      setPreviewId((currentId) => {
+        const available = imagesRef.current;
 
-      if (available.length === 0) return null;
+        if (available.length === 0) return null;
 
-      const index = available.findIndex((item) => item.id === currentId);
+        const index = available.findIndex((item) => item.id === currentId);
 
-      const currentIndex = index < 0 ? 0 : index;
+        const currentIndex = index < 0 ? 0 : index;
 
-      const nextIndex =
-        (currentIndex + direction + available.length) % available.length;
+        const nextIndex =
+          (currentIndex + direction + available.length) % available.length;
 
-      return available[nextIndex].id;
-    });
-  }, []);
+        return available[nextIndex].id;
+      });
+    },
+    [setPreviewId],
+  );
 
   // Navigation au clavier dans l'aperçu agrandi
   useEffect(() => {
@@ -526,6 +731,16 @@ function SendClipboard({ onItemAdded }) {
         hidden
       />
 
+      <input
+        ref={documentInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+        multiple
+        onChange={handleDocumentChange}
+        disabled={isSending}
+        hidden
+      />
+
       <div className="relative">
         {isDraggingFiles && (
           <div className="pointer-events-none absolute inset-0 z-20 flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-6 text-center">
@@ -543,7 +758,7 @@ function SendClipboard({ onItemAdded }) {
           </div>
         )}
 
-        {images.length === 0 ? (
+        {images.length === 0 && documents.length === 0 ? (
           <>
             <textarea
               value={text}
@@ -553,18 +768,31 @@ function SendClipboard({ onItemAdded }) {
               disabled={isSending}
               className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
-
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={chooseImage}
-                disabled={isSending}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-              >
-                <ImagePlus size={18} />
-                Joindre des images
-              </button>
+              {/* Groupe de gauche */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={chooseImage}
+                  disabled={isSending}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <ImagePlus size={18} />
+                  Images
+                </button>
 
+                <button
+                  type="button"
+                  onClick={chooseDocument}
+                  disabled={isSending}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <FileUp size={18} />
+                  Fichiers
+                </button>
+              </div>
+
+              {/* Bouton de droite */}
               <button
                 type="button"
                 onClick={sendText}
@@ -576,7 +804,7 @@ function SendClipboard({ onItemAdded }) {
               </button>
             </div>
           </>
-        ) : (
+        ) : images.length > 0 ? (
           <>
             {/* Galerie horizontale */}
             <div
@@ -676,10 +904,98 @@ function SendClipboard({ onItemAdded }) {
               </button>
             </div>
           </>
+        ) : (
+          <>
+            {/* Liste des documents sélectionnés */}
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              {documents.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
+                >
+                  <FileText size={24} className="shrink-0 text-blue-600" />
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="truncate text-sm font-medium text-slate-800"
+                      title={item.file.name}
+                    >
+                      {item.file.name}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {sizeInMo(item.file.size)} Mo
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removeDocument(item.id)}
+                    disabled={isSending}
+                    aria-label={`Retirer ${item.file.name}`}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Compteur et ajout */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span>
+                {documents.length} / {MAX_DOCUMENTS} fichiers ·{" "}
+                {sizeInMo(
+                  documents.reduce((sum, item) => sum + item.file.size, 0),
+                )}{" "}
+                Mo au total
+              </span>
+
+              {documents.length < MAX_DOCUMENTS && (
+                <button
+                  type="button"
+                  onClick={chooseDocument}
+                  disabled={isSending}
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                >
+                  <FileUp size={17} />
+                  Ajouter des fichiers
+                </button>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={clearDocuments}
+                disabled={isSending}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                <X size={17} />
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={sendDocuments}
+                disabled={isSending}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Send size={17} />
+                {isSending
+                  ? "Envoi en cours..."
+                  : `Envoyer ${documents.length} fichier${
+                      documents.length > 1 ? "s" : ""
+                    }`}
+              </button>
+            </div>
+          </>
         )}
       </div>
 
       {/* Aperçu agrandi */}
+
       {previewImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
