@@ -709,26 +709,43 @@ app.get("/items/history", async (req, res) => {
 
   const history = await Promise.all(
     items.map(async (item) => {
-      if (item.type !== "image" || !item.storage_path) {
+      // Les textes n'ont pas de fichier à télécharger.
+      if (!item.storage_path) {
         return item;
       }
 
+      // Choisir le bucket selon le type.
+      const bucket =
+        item.type === "image"
+          ? "clipboard-images"
+          : item.type === "file"
+            ? "clipboard-files"
+            : null;
+
+      if (!bucket) {
+        return item;
+      }
+
+      // Générer un lien temporaire valable une heure.
       const { data, error: signedUrlError } = await userSupabase.storage
-        .from("clipboard-images")
+        .from(bucket)
         .createSignedUrl(item.storage_path, 3600);
 
       if (signedUrlError) {
-        console.error("Erreur génération URL image :", signedUrlError);
+        console.error("Erreur génération URL :", signedUrlError);
 
         return {
           ...item,
           image_url: null,
+          file_url: null,
         };
       }
 
       return {
         ...item,
-        image_url: data.signedUrl,
+        ...(item.type === "image"
+          ? { image_url: data.signedUrl }
+          : { file_url: data.signedUrl }),
       };
     }),
   );
@@ -802,16 +819,24 @@ app.delete("/items/:id", async (req, res) => {
     });
   }
 
-  // Si c'est une image, on supprime d'abord le fichier réel
-  if (item.type === "image" && item.storage_path) {
+  // Déterminer le bucket selon le type d'élément
+  const storageBucket =
+    item.type === "image"
+      ? "clipboard-images"
+      : item.type === "file"
+        ? "clipboard-files"
+        : null;
+
+  // Supprimer le fichier réel avant son entrée en BDD
+  if (storageBucket && item.storage_path) {
     const { error: storageError } = await userSupabase.storage
-      .from("clipboard-images")
+      .from(storageBucket)
       .remove([item.storage_path]);
 
     if (storageError) {
       return res.status(500).json({
         success: false,
-        error: "Impossible de supprimer l'image du stockage",
+        error: "Impossible de supprimer le fichier du stockage",
       });
     }
   }
@@ -891,6 +916,27 @@ app.post("/maintenance/cleanup-expired", async (req, res) => {
   // 4. Supprimer les lignes de la BDD
   const expiredIds = expiredItems.map((item) => item.id);
 
+  // Récupérer les documents expirés
+  const filePaths = expiredItems
+    .filter((item) => item.type === "file" && item.storage_path)
+    .map((item) => item.storage_path);
+
+  // Supprimer les documents de Supabase Storage
+  if (filePaths.length > 0) {
+    const { error: fileStorageError } = await adminSupabase.storage
+      .from("clipboard-files")
+      .remove(filePaths);
+
+    if (fileStorageError) {
+      console.error("Erreur suppression documents expirés :", fileStorageError);
+
+      return res.status(500).json({
+        success: false,
+        error: "Impossible de supprimer les documents expirés",
+      });
+    }
+  }
+
   const { error: deleteError } = await adminSupabase
     .from("clipboard_items")
     .delete()
@@ -907,6 +953,7 @@ app.post("/maintenance/cleanup-expired", async (req, res) => {
     success: true,
     deleted: expiredItems.length,
     deletedImages: imagePaths.length,
+    deletedFiles: filePaths.length,
     message: "Nettoyage terminé",
   });
 });
