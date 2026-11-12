@@ -44,6 +44,77 @@ const upload = multer({
   },
 });
 
+const MAX_FILE_SIZE = 20 * 1000 * 1000; // 20 Mo
+
+const allowedFileFormats = {
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx":
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx":
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".txt": "text/plain",
+  ".csv": "text/csv",
+  ".zip": "application/zip",
+};
+
+const uploadFile = multer({
+  storage: multer.memoryStorage(),
+  defParamCharset: "utf8",
+
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+  },
+
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+
+    if (!Object.hasOwn(allowedFileFormats, extension)) {
+      return cb(new Error("Format de fichier non autorisé"));
+    }
+
+    cb(null, true);
+  },
+}).single("file");
+
+// Vérification élémentaire de la signature du fichier.
+// Elle ne remplace pas une analyse complète du contenu.
+function isValidFileSignature(buffer, extension) {
+  if (!buffer || buffer.length === 0) return false;
+
+  const zipSignature =
+    buffer.length >= 4 &&
+    buffer[0] === 0x50 &&
+    buffer[1] === 0x4b &&
+    ((buffer[2] === 0x03 && buffer[3] === 0x04) ||
+      (buffer[2] === 0x05 && buffer[3] === 0x06));
+
+  const officeOpenXml = [".docx", ".xlsx", ".pptx"];
+
+  if (extension === ".zip" || officeOpenXml.includes(extension)) {
+    return zipSignature;
+  }
+
+  if (extension === ".pdf") {
+    return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+  }
+
+  if ([".doc", ".xls", ".ppt"].includes(extension)) {
+    const oleSignature = Buffer.from("d0cf11e0a1b11ae1", "hex");
+
+    return buffer.length >= 8 && buffer.subarray(0, 8).equals(oleSignature);
+  }
+
+  if ([".txt", ".csv"].includes(extension)) {
+    return !buffer.subarray(0, 4096).includes(0);
+  }
+
+  return false;
+}
+
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || "http://localhost:5173")
   .split(",")
   .map((origin) => origin.trim())
@@ -311,6 +382,129 @@ app.post(
     res.status(201).json({
       success: true,
       message: "Image enregistrée",
+      item: data,
+    });
+  },
+);
+
+app.post(
+  "/items/file",
+  requireAuth,
+
+  // Gestion des erreurs spécifiques aux documents
+  (req, res, next) => {
+    uploadFile(req, res, (error) => {
+      if (!error) return next();
+
+      if (
+        error instanceof multer.MulterError &&
+        error.code === "LIMIT_FILE_SIZE"
+      ) {
+        return res.status(413).json({
+          success: false,
+          error: "Fichier trop volumineux (20 Mo maximum)",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: error.message || "Fichier invalide",
+      });
+    });
+  },
+
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: "Aucun fichier envoyé",
+      });
+    }
+
+    const extension = path.extname(req.file.originalname).toLowerCase();
+
+    const mimeType = allowedFileFormats[extension];
+
+    if (!mimeType || !isValidFileSignature(req.file.buffer, extension)) {
+      return res.status(400).json({
+        success: false,
+        error: "Le fichier ne correspond pas à un format autorisé",
+      });
+    }
+
+    const userSupabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${req.accessToken}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+
+    const fileName = `${crypto.randomUUID()}${extension}`;
+    const storagePath = `${req.user.id}/${fileName}`;
+
+    // 1. Enregistrer le fichier dans Storage
+    const { error: uploadError } = await userSupabase.storage
+      .from("clipboard-files")
+      .upload(storagePath, req.file.buffer, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Erreur upload fichier :", uploadError);
+
+      return res.status(500).json({
+        success: false,
+        error: "Impossible d'envoyer le fichier",
+      });
+    }
+
+    // 2. Enregistrer les métadonnées dans PostgreSQL
+    const { data, error: databaseError } = await userSupabase
+      .from("clipboard_items")
+      .insert({
+        user_id: req.user.id,
+        type: "file",
+        storage_path: storagePath,
+        original_filename: req.file.originalname,
+        mime_type: mimeType,
+        file_size: req.file.size,
+      })
+      .select()
+      .single();
+
+    if (databaseError) {
+      console.error("Erreur BDD fichier :", databaseError);
+
+      // Nettoyer le fichier si l'insertion échoue
+      const { error: cleanupError } = await userSupabase.storage
+        .from("clipboard-files")
+        .remove([storagePath]);
+
+      if (cleanupError) {
+        console.error("Erreur nettoyage fichier :", cleanupError);
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: "Impossible d'enregistrer le fichier",
+      });
+    }
+
+    // 3. Confirmation
+    return res.status(201).json({
+      success: true,
+      message: "Fichier enregistré",
       item: data,
     });
   },
