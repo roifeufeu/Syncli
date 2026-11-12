@@ -300,8 +300,29 @@ function SendClipboard({ onItemAdded }) {
 
     const droppedFiles = Array.from(event.dataTransfer.files);
 
-    // Réutiliser la même validation que le bouton de sélection.
-    addImages(droppedFiles);
+    if (droppedFiles.length === 0) return;
+
+    // Séparer les images des autres fichiers.
+    const imageFiles = droppedFiles.filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    const documentFiles = droppedFiles.filter(
+      (file) => !file.type.startsWith("image/"),
+    );
+
+    // Ne pas mélanger deux modes d'envoi.
+    if (imageFiles.length > 0 && documentFiles.length > 0) {
+      setMessage("Dépose les images et les documents séparément.");
+      return;
+    }
+
+    // Réutiliser les validations existantes.
+    if (imageFiles.length > 0) {
+      addImages(imageFiles);
+    } else {
+      addDocuments(documentFiles);
+    }
   };
 
   const removeImage = (id) => {
@@ -744,16 +765,21 @@ function SendClipboard({ onItemAdded }) {
       <div className="relative">
         {isDraggingFiles && (
           <div className="pointer-events-none absolute inset-0 z-20 flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-6 text-center">
-            <ImagePlus size={42} className="text-blue-600" />
+            <div className="flex items-center gap-3 text-blue-600">
+              <ImagePlus size={36} />
+              <FileUp size={36} />
+            </div>
 
             <p className="text-lg font-semibold text-blue-700">
-              Déposez vos images ici
+              Déposez vos fichiers ici
             </p>
 
-            <p className="text-sm text-blue-600">JPG, PNG, WebP ou GIF</p>
+            <p className="text-sm text-blue-600">
+              Images, PDF, Word, Excel, ZIP...
+            </p>
 
             <p className="text-xs text-blue-500">
-              10 images maximum · 10 Mo par image
+              10 éléments maximum · 10 Mo/image · 20 Mo/fichier
             </p>
           </div>
         )}

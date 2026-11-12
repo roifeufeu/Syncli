@@ -29,8 +29,7 @@ function expirationLabel(expiresAt) {
   if (difference < 24 * 60 * 60 * 1000) {
     return `Expire dans ${Math.ceil(difference / 3600000)} h`;
   }
-
-  return `Expire dans ${Math.ceil(difference / 86400000)} j`;
+  return `Expire dans ${Math.min(7, Math.ceil(difference / 86400000))} j`;
 }
 
 function ageLabel(createdAt) {
