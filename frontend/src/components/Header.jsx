@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ClipboardCopy, UserRound, ChevronDown, LogOut } from "lucide-react";
+import StorageUsage from "./StorageUsage";
 
 function Header({ email, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,12 +39,16 @@ function Header({ email, onLogout }) {
 
           {/* Menu déroulant */}
           {menuOpen && (
-            <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+            <div className="absolute right-0 z-20 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
               <p className="text-xs text-slate-500">Connecté en tant que</p>
 
               <p className="mt-1 break-all text-sm font-medium text-slate-800">
                 {email}
               </p>
+
+              <hr className="my-3 border-slate-200" />
+
+              <StorageUsage />
 
               <hr className="my-3 border-slate-200" />
 

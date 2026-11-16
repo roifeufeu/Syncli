@@ -6,6 +6,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+const { getStorageUsage, requireStorageQuota } = require("./storageQuota");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -169,6 +170,24 @@ async function requireAuth(req, res, next) {
   }
 }
 
+app.get("/storage/usage", requireAuth, async (req, res) => {
+  try {
+    const usage = await getStorageUsage(req.accessToken);
+
+    return res.json({
+      success: true,
+      ...usage,
+    });
+  } catch (error) {
+    console.error("Erreur récupération stockage :", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Impossible de récupérer le stockage utilisé",
+    });
+  }
+});
+
 app.get("/", (req, res) => {
   res.json({ message: "Backend OK" });
 });
@@ -253,6 +272,7 @@ app.post(
   "/items/image",
   requireAuth,
   upload.single("image"),
+  requireStorageQuota,
   async (req, res) => {
     const authHeader = req.headers.authorization;
 
@@ -373,6 +393,13 @@ app.post(
         console.error("Erreur nettoyage image :", cleanupError);
       }
 
+      if (databaseError.message?.includes("STORAGE_QUOTA_EXCEEDED")) {
+        return res.status(409).json({
+          success: false,
+          error: "Quota de stockage de 100 Mo atteint.",
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: "Impossible d'enregistrer l'image. Réessaie.",
@@ -412,6 +439,8 @@ app.post(
       });
     });
   },
+
+  requireStorageQuota,
 
   async (req, res) => {
     if (!req.file) {
@@ -493,6 +522,13 @@ app.post(
 
       if (cleanupError) {
         console.error("Erreur nettoyage fichier :", cleanupError);
+      }
+
+      if (databaseError.message?.includes("STORAGE_QUOTA_EXCEEDED")) {
+        return res.status(409).json({
+          success: false,
+          error: "Quota de stockage de 100 Mo atteint.",
+        });
       }
 
       return res.status(500).json({
