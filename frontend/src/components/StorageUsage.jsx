@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HardDrive, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 function StorageUsage() {
@@ -75,11 +75,6 @@ function StorageUsage() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
-        <HardDrive size={17} className="text-blue-600" />
-        <span className="text-sm font-medium text-slate-800">Mon stockage</span>
-      </div>
-
       {loading ? (
         <p className="text-xs text-slate-500">Chargement du stockage...</p>
       ) : error ? (

@@ -443,6 +443,7 @@ function SendClipboard({ onItemAdded }) {
       const queue = [...imagesRef.current];
       const sentIds = new Set();
       const failedNames = [];
+      let firstError = "";
       let sessionExpired = false;
 
       for (const item of queue) {
@@ -467,10 +468,16 @@ function SendClipboard({ onItemAdded }) {
           }
 
           if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+
             failedNames.push(item.file.name);
+
+            if (!firstError) {
+              firstError = data.error || "Erreur lors de l'envoi";
+            }
+
             continue;
           }
-
           sentIds.add(item.id);
         } catch {
           failedNames.push(item.file.name);
@@ -498,7 +505,7 @@ function SendClipboard({ onItemAdded }) {
         );
       } else if (failedNames.length > 0) {
         setMessage(
-          `${sentIds.size} image(s) envoyée(s), ${failedNames.length} échec(s). Les images non envoyées restent sélectionnées.`,
+          `${sentIds.size} image(s) envoyée(s), ${failedNames.length} échec(s). ${firstError} Les images non envoyées restent sélectionnées.`,
         );
       } else {
         setMessage(
