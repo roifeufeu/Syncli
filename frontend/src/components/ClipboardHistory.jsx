@@ -8,6 +8,9 @@ import {
   FileSpreadsheet,
   Presentation,
   Download,
+  Pencil,
+  Check,
+  X,
   FileText,
   Image as ImageIcon,
   Trash2,
@@ -76,6 +79,9 @@ function ClipboardHistory({ refreshKey }) {
   const [loading, setLoading] = useState(true);
   const deletingRef = useRef(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [draftText, setDraftText] = useState("");
+  const [savingId, setSavingId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -333,7 +339,18 @@ function ClipboardHistory({ refreshKey }) {
         )
 
         .on("postgres_changes", { ...config, event: "UPDATE" }, (payload) => {
-          console.log("[Realtime] Élément modifié :", payload.new.id);
+          const updatedItem = payload.new;
+
+          if (updatedItem.user_id !== session.user.id) return;
+          if (updatedItem.type !== "text") return;
+
+          console.log("[Realtime] Texte modifié :", updatedItem.id);
+
+          setItems((previousItems) =>
+            previousItems.map((item) =>
+              item.id === updatedItem.id ? { ...item, ...updatedItem } : item,
+            ),
+          );
         })
 
         .subscribe((status, subscribeError) => {
@@ -467,6 +484,82 @@ function ClipboardHistory({ refreshKey }) {
     }
   };
 
+  const startEdit = (item) => {
+    if (savingId !== null) return;
+
+    setEditingId(item.id);
+    setDraftText(item.text_content || "");
+    setMessage("");
+  };
+
+  const cancelEdit = () => {
+    if (savingId !== null) return;
+
+    setEditingId(null);
+    setDraftText("");
+    setMessage("");
+  };
+
+  const saveEdit = async (id) => {
+    if (savingId !== null || editingId !== id) return;
+
+    if (!draftText.trim()) {
+      setMessage("Le texte ne peut pas être vide");
+      return;
+    }
+
+    setSavingId(id);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        setMessage("Session indisponible. Reconnecte-toi.");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/items/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            text: draftText,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.error || "Impossible de modifier le texte");
+        return;
+      }
+
+      // Mettre à jour immédiatement l'historique local.
+      setItems((previous) =>
+        previous.map((item) =>
+          item.id === id ? { ...item, ...data.item } : item,
+        ),
+      );
+
+      setEditingId(null);
+      setDraftText("");
+      setMessage("Texte modifié");
+    } catch {
+      setMessage("Impossible de contacter le serveur");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const visibleItems = items.filter(
     (item) => filter === "all" || item.type === filter,
   );
@@ -579,37 +672,50 @@ function ClipboardHistory({ refreshKey }) {
                       Texte
                     </div>
 
-                    <pre
-                      className={`rounded-lg bg-slate-50 p-3 font-mono text-sm leading-6 whitespace-pre-wrap break-words text-slate-800 ${
-                        isExpanded
-                          ? "max-h-96 overflow-y-auto"
-                          : "line-clamp-3 overflow-hidden"
-                      }`}
-                    >
-                      {text}
-                    </pre>
-
-                    {isLong && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedIds((previous) =>
+                    {editingId === item.id ? (
+                      <textarea
+                        value={draftText}
+                        onChange={(event) => setDraftText(event.target.value)}
+                        disabled={savingId !== null}
+                        rows={6}
+                        autoFocus
+                        className="w-full resize-y rounded-lg border border-blue-300 bg-white p-3 font-mono text-sm leading-6 text-slate-800 outline-none focus:ring-4 focus:ring-blue-100"
+                      />
+                    ) : (
+                      <>
+                        <pre
+                          className={`rounded-lg bg-slate-50 p-3 font-mono text-sm leading-6 whitespace-pre-wrap break-words text-slate-800 ${
                             isExpanded
-                              ? previous.filter((id) => id !== item.id)
-                              : [...previous, item.id],
-                          )
-                        }
-                        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
-                        aria-expanded={isExpanded}
-                      >
-                        {isExpanded ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        )}
+                              ? "max-h-96 overflow-y-auto"
+                              : "line-clamp-3 overflow-hidden"
+                          }`}
+                        >
+                          {text}
+                        </pre>
 
-                        {isExpanded ? "Voir moins" : "Voir plus"}
-                      </button>
+                        {isLong && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedIds((previous) =>
+                                isExpanded
+                                  ? previous.filter((id) => id !== item.id)
+                                  : [...previous, item.id],
+                              )
+                            }
+                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp size={16} />
+                            ) : (
+                              <ChevronDown size={16} />
+                            )}
+
+                            {isExpanded ? "Voir moins" : "Voir plus"}
+                          </button>
+                        )}
+                      </>
                     )}
                   </>
                 ) : item.type === "image" ? (
@@ -757,13 +863,53 @@ function ClipboardHistory({ refreshKey }) {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {editingId === item.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => saveEdit(item.id)}
+                            disabled={savingId !== null || !draftText.trim()}
+                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {savingId === item.id ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Check size={16} />
+                            )}
+                            Enregistrer
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            disabled={savingId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            <X size={16} />
+                            Annuler
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(item)}
+                            disabled={savingId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            <Pencil size={16} />
+                          </button>
+
+                          {/* Tes boutons Copier et Supprimer existants */}
+                        </>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => copyText(text)}
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Copy size={16} />
-                        Copier
                       </button>
 
                       <button

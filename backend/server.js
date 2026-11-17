@@ -268,6 +268,80 @@ app.post("/items/text", async (req, res) => {
   });
 });
 
+app.patch("/items/:id", requireAuth, async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    // Vérifier le nouveau contenu
+    if (typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Le texte ne peut pas être vide",
+      });
+    }
+
+    // Client Supabase authentifié avec le compte connecté
+    const userSupabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${req.accessToken}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+
+    // Modifier uniquement le texte de l'utilisateur
+    const { data, error } = await userSupabase
+      .from("clipboard_items")
+      .update({
+        text_content: text,
+      })
+      .eq("id", req.params.id)
+      .eq("user_id", req.user.id)
+      .eq("type", "text")
+      .gt("expires_at", new Date().toISOString())
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erreur modification texte :", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Impossible de modifier le texte",
+      });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: "Texte introuvable, expiré ou non autorisé",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Texte modifié",
+      item: data,
+    });
+  } catch (error) {
+    console.error("Erreur PATCH texte :", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Une erreur est survenue lors de la modification",
+    });
+  }
+});
+
 app.post(
   "/items/image",
   requireAuth,
