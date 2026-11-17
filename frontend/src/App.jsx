@@ -91,6 +91,7 @@ function App() {
             <ClipboardHistory refreshKey={historyVersion} />
           </section>
         </main>
+
         <Footer />
       </div>
     );
@@ -112,13 +113,13 @@ function App() {
           </div>
 
           {/* Carte d'authentification */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="mb-6 text-center">
-              <h1 className="text-2xl font-semibold text-slate-900">
+              <h1 className="text-2xl font-semibold text-slate-900 dark:text-zinc-50">
                 {authMode === "login" ? "Bon retour !" : "Créer un compte"}
               </h1>
 
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">
                 {authMode === "login"
                   ? "Connectez-vous pour retrouver vos éléments."
                   : "Créez votre espace presse-papiers personnel."}
@@ -126,7 +127,7 @@ function App() {
             </div>
 
             {/* Onglets */}
-            <div className="mb-7 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+            <div className="mb-7 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-zinc-800">
               <button
                 type="button"
                 onClick={() => {
@@ -135,8 +136,8 @@ function App() {
                 }}
                 className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
                   authMode === "login"
-                    ? "bg-white text-blue-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
+                    ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-700 dark:text-blue-400"
+                    : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
                 }`}
               >
                 Connexion
@@ -150,8 +151,8 @@ function App() {
                 }}
                 className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
                   authMode === "register"
-                    ? "bg-white text-blue-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
+                    ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-700 dark:text-blue-400"
+                    : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100"
                 }`}
               >
                 Inscription
@@ -175,7 +176,7 @@ function App() {
               <div>
                 <label
                   htmlFor="auth-email"
-                  className="mb-2 block text-sm font-medium text-slate-700"
+                  className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
                 >
                   Adresse email
                 </label>
@@ -183,7 +184,7 @@ function App() {
                 <div className="relative">
                   <Mail
                     size={18}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 dark:text-zinc-500"
                   />
 
                   <input
@@ -194,7 +195,7 @@ function App() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="exemple@email.com"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pr-4 pl-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pr-4 pl-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                   />
                 </div>
               </div>
@@ -203,7 +204,7 @@ function App() {
               <div>
                 <label
                   htmlFor="auth-password"
-                  className="mb-2 block text-sm font-medium text-slate-700"
+                  className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
                 >
                   Mot de passe
                 </label>
@@ -211,7 +212,7 @@ function App() {
                 <div className="relative">
                   <LockKeyhole
                     size={18}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400 dark:text-zinc-500"
                   />
 
                   <input
@@ -224,7 +225,7 @@ function App() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Votre mot de passe"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pr-4 pl-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pr-4 pl-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                   />
                 </div>
               </div>
@@ -233,7 +234,7 @@ function App() {
               {message && (
                 <p
                   role="status"
-                  className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600"
+                  className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   {message}
                 </p>
@@ -252,7 +253,7 @@ function App() {
           </div>
 
           {/* Description sous la carte */}
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p className="mt-6 text-center text-sm text-slate-500 dark:text-zinc-400">
             Vos textes et images, accessibles sur tous vos appareils.
           </p>
         </div>
