@@ -79,7 +79,7 @@ function App() {
 
   if (session) {
     return (
-      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-50">
         <Header email={session.user.email} onLogout={logout} />
 
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
@@ -97,7 +97,7 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-50">
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           {/* Logo */}

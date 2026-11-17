@@ -566,7 +566,9 @@ function ClipboardHistory({ refreshKey }) {
 
   if (loading) {
     return (
-      <p className="text-sm text-slate-500">Chargement de l'historique...</p>
+      <p className="text-sm text-slate-500 dark:text-zinc-400">
+        Chargement de l'historique...
+      </p>
     );
   }
 
@@ -574,14 +576,14 @@ function ClipboardHistory({ refreshKey }) {
     return (
       <div
         role="alert"
-        className="rounded-xl border border-red-200 bg-red-50 p-5"
+        className="rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-900/60 dark:bg-red-950/30"
       >
-        <p className="text-sm text-red-700">{loadError}</p>
+        <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
 
         <button
           type="button"
           onClick={() => void loadHistory()}
-          className="mt-3 rounded-lg bg-white px-4 py-2 text-sm font-medium text-red-700 border border-red-200 hover:bg-red-100"
+          className="mt-3 rounded-lg bg-white px-4 py-2 text-sm font-medium text-red-700 border border-red-200 hover:bg-red-100 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-zinc-800"
         >
           Réessayer
         </button>
@@ -593,7 +595,7 @@ function ClipboardHistory({ refreshKey }) {
     <div>
       {/* Titre et filtres */}
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-zinc-50">
           Vos éléments récents
         </h2>
 
@@ -612,7 +614,7 @@ function ClipboardHistory({ refreshKey }) {
               className={
                 filter === option.value
                   ? "rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white"
-                  : "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  : "rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               }
             >
               {option.label}
@@ -622,19 +624,22 @@ function ClipboardHistory({ refreshKey }) {
       </div>
 
       {loadError && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
+        <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">
           {loadError}
         </p>
       )}
 
       {message && (
-        <p role="status" className="mb-4 text-sm text-slate-600">
+        <p
+          role="status"
+          className="mb-4 text-sm text-slate-600 dark:text-zinc-300"
+        >
           {message}
         </p>
       )}
 
       {visibleItems.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
           Aucun élément à afficher.
         </div>
       ) : (
@@ -662,12 +667,12 @@ function ClipboardHistory({ refreshKey }) {
             return (
               <article
                 key={item.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
               >
                 {/* Carte TEXTE */}
                 {item.type === "text" ? (
                   <>
-                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-zinc-200">
                       <FileText size={17} className="text-blue-600" />
                       Texte
                     </div>
@@ -679,12 +684,12 @@ function ClipboardHistory({ refreshKey }) {
                         disabled={savingId !== null}
                         rows={6}
                         autoFocus
-                        className="w-full resize-y rounded-lg border border-blue-300 bg-white p-3 font-mono text-sm leading-6 text-slate-800 outline-none focus:ring-4 focus:ring-blue-100"
+                        className="w-full resize-y rounded-lg border border-blue-300 bg-white p-3 font-mono text-sm leading-6 text-slate-800 outline-none focus:ring-4 focus:ring-blue-100 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                       />
                     ) : (
                       <>
                         <pre
-                          className={`rounded-lg bg-slate-50 p-3 font-mono text-sm leading-6 whitespace-pre-wrap break-words text-slate-800 ${
+                          className={`rounded-lg bg-slate-50 p-3 font-mono text-sm leading-6 whitespace-pre-wrap break-words text-slate-800 dark:bg-zinc-800 dark:text-zinc-100 ${
                             isExpanded
                               ? "max-h-96 overflow-y-auto"
                               : "line-clamp-3 overflow-hidden"
@@ -703,7 +708,7 @@ function ClipboardHistory({ refreshKey }) {
                                   : [...previous, item.id],
                               )
                             }
-                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                             aria-expanded={isExpanded}
                           >
                             {isExpanded ? (
@@ -722,7 +727,7 @@ function ClipboardHistory({ refreshKey }) {
                   /* Carte IMAGE */
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     {/* Miniature */}
-                    <div className="flex h-48 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-32 sm:w-44">
+                    <div className="flex h-48 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-zinc-800 sm:h-32 sm:w-44">
                       {item.image_url ? (
                         <img
                           src={item.image_url}
@@ -730,29 +735,32 @@ function ClipboardHistory({ refreshKey }) {
                           className="h-full w-full object-contain"
                         />
                       ) : (
-                        <ImageIcon size={32} className="text-slate-400" />
+                        <ImageIcon
+                          size={32}
+                          className="text-slate-400 dark:text-zinc-500"
+                        />
                       )}
                     </div>
 
                     {/* Informations image */}
                     <div className="min-w-0 flex-1">
-                      <p className="break-all font-medium text-slate-900">
+                      <p className="break-all font-medium text-slate-900 dark:text-zinc-100">
                         {item.original_filename || "Image"}
                       </p>
 
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
                         {sizeLabel(item.file_size)}
                       </p>
 
                       {!item.image_url && (
-                        <p className="mt-2 text-sm text-slate-500">
+                        <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">
                           Aperçu indisponible
                         </p>
                       )}
 
                       {/* Dates et actions image */}
-                      <div className="mt-4 border-t border-slate-100 pt-3 sm:mt-3 sm:flex sm:items-center sm:justify-between sm:gap-3 sm:border-t-0 sm:pt-0">
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <div className="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800 sm:mt-3 sm:flex sm:items-center sm:justify-between sm:gap-3 sm:border-t-0 sm:pt-0">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-zinc-400">
                           <span>{ageLabel(item.created_at)}</span>
                           <span>{expirationLabel(item.expires_at)}</span>
                         </div>
@@ -767,7 +775,7 @@ function ClipboardHistory({ refreshKey }) {
                                   item.original_filename,
                                 )
                               }
-                              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                             >
                               <Download size={16} />
                               Télécharger
@@ -779,7 +787,7 @@ function ClipboardHistory({ refreshKey }) {
                             disabled={deletingId !== null}
                             onClick={() => deleteItem(item.id)}
                             aria-label="Supprimer l'élément"
-                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                           >
                             {deletingId === item.id ? (
                               <Loader2 size={17} className="animate-spin" />
@@ -795,23 +803,26 @@ function ClipboardHistory({ refreshKey }) {
                   /* Carte FICHIER */
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     {/* Icône du document */}
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                      <DocumentIcon size={36} className="text-blue-600" />
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40">
+                      <DocumentIcon
+                        size={36}
+                        className="text-blue-600 dark:text-blue-400"
+                      />
                     </div>
 
                     {/* Informations */}
                     <div className="min-w-0 flex-1">
-                      <p className="break-all font-medium text-slate-900">
+                      <p className="break-all font-medium text-slate-900 dark:text-zinc-100">
                         {item.original_filename || "Fichier"}
                       </p>
 
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
                         {extension.toUpperCase()} · {sizeLabel(item.file_size)}
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                         {/* Dates */}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-zinc-400">
                           <span>{ageLabel(item.created_at)}</span>
                           <span>{expirationLabel(item.expires_at)}</span>
                         </div>
@@ -827,7 +838,7 @@ function ClipboardHistory({ refreshKey }) {
                               )
                             }
                             disabled={!item.file_url}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Download size={16} />
                             Télécharger
@@ -838,7 +849,7 @@ function ClipboardHistory({ refreshKey }) {
                             disabled={deletingId !== null}
                             onClick={() => deleteItem(item.id)}
                             aria-label="Supprimer le fichier"
-                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                           >
                             {deletingId === item.id ? (
                               <Loader2 size={17} className="animate-spin" />
@@ -855,8 +866,8 @@ function ClipboardHistory({ refreshKey }) {
                 {/* Dates et actions TEXTE */}
 
                 {item.type === "text" && (
-                  <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-zinc-400">
                       <span>{ageLabel(item.created_at)}</span>
 
                       <span>{expirationLabel(item.expires_at)}</span>
@@ -883,7 +894,7 @@ function ClipboardHistory({ refreshKey }) {
                             type="button"
                             onClick={cancelEdit}
                             disabled={savingId !== null}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <X size={16} />
                             Annuler
@@ -895,7 +906,9 @@ function ClipboardHistory({ refreshKey }) {
                             type="button"
                             onClick={() => startEdit(item)}
                             disabled={savingId !== null}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            aria-label="Modifier le texte"
+                            title="Modifier le texte"
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                           >
                             <Pencil size={16} />
                           </button>
@@ -907,7 +920,9 @@ function ClipboardHistory({ refreshKey }) {
                       <button
                         type="button"
                         onClick={() => copyText(text)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Copier le texte"
+                        title="Copier le texte"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                       >
                         <Copy size={16} />
                       </button>
@@ -917,7 +932,7 @@ function ClipboardHistory({ refreshKey }) {
                         onClick={() => deleteItem(item.id)}
                         disabled={deletingId !== null}
                         aria-label="Supprimer l'élément"
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                       >
                         {deletingId === item.id ? (
                           <Loader2 size={17} className="animate-spin" />

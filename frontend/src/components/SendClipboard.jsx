@@ -739,13 +739,15 @@ function SendClipboard({ onItemAdded }) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900"
     >
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-slate-900">Envoyer</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-zinc-50">
+          Envoyer
+        </h2>
 
-        <p className="mt-1 text-sm text-slate-500">
-          Transférez du texte ou des images entre vos appareils.
+        <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
+          Transférez du texte, des images ou des fichiers entre vos appareils.
         </p>
       </div>
 
@@ -771,21 +773,21 @@ function SendClipboard({ onItemAdded }) {
 
       <div className="relative">
         {isDraggingFiles && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-6 text-center">
-            <div className="flex items-center gap-3 text-blue-600">
+          <div className="pointer-events-none absolute inset-0 z-20 flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-500 bg-blue-50 p-6 text-center dark:border-blue-500 dark:bg-blue-950/90">
+            <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
               <ImagePlus size={36} />
               <FileUp size={36} />
             </div>
 
-            <p className="text-lg font-semibold text-blue-700">
+            <p className="text-lg font-semibold text-blue-700 dark:text-blue-200">
               Déposez vos fichiers ici
             </p>
 
-            <p className="text-sm text-blue-600">
+            <p className="text-sm text-blue-600 dark:text-blue-300">
               Images, PDF, Word, Excel, ZIP...
             </p>
 
-            <p className="text-xs text-blue-500">
+            <p className="text-xs text-blue-500 dark:text-blue-300">
               10 éléments maximum · 10 Mo/image · 20 Mo/fichier
             </p>
           </div>
@@ -799,7 +801,7 @@ function SendClipboard({ onItemAdded }) {
               placeholder="Collez votre texte ici..."
               rows={7}
               disabled={isSending}
-              className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
             />
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               {/* Groupe de gauche */}
@@ -808,7 +810,7 @@ function SendClipboard({ onItemAdded }) {
                   type="button"
                   onClick={chooseImage}
                   disabled={isSending}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                 >
                   <ImagePlus size={18} />
                   Images
@@ -818,7 +820,7 @@ function SendClipboard({ onItemAdded }) {
                   type="button"
                   onClick={chooseDocument}
                   disabled={isSending}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                 >
                   <FileUp size={18} />
                   Fichiers
@@ -846,7 +848,7 @@ function SendClipboard({ onItemAdded }) {
               onMouseMove={moveGalleryDrag}
               onMouseUp={stopGalleryDrag}
               onMouseLeave={stopGalleryDrag}
-              className="flex cursor-grab select-none gap-3 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4 pb-3 active:cursor-grabbing"
+              className="flex cursor-grab select-none gap-3 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4 pb-3 active:cursor-grabbing dark:border-zinc-700 dark:bg-zinc-800"
             >
               {images.map((item) => (
                 <div
@@ -857,7 +859,7 @@ function SendClipboard({ onItemAdded }) {
                   <button
                     type="button"
                     onClick={() => openPreview(item.id)}
-                    className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-64"
+                    className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100 sm:h-64 dark:bg-zinc-900"
                     aria-label={`Agrandir ${item.file.name}`}
                   >
                     <img
@@ -881,7 +883,7 @@ function SendClipboard({ onItemAdded }) {
                   </button>
 
                   <p
-                    className="mt-2 truncate text-sm text-slate-700"
+                    className="mt-2 truncate text-sm text-slate-700 dark:text-zinc-200"
                     title={item.file.name}
                   >
                     {item.file.name}
@@ -891,7 +893,7 @@ function SendClipboard({ onItemAdded }) {
             </div>
 
             {/* Compteur et ajout */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500 dark:text-zinc-400">
               <span>
                 {images.length} / {MAX_IMAGES} images · {sizeInMo(totalSize)} Mo
                 au total
@@ -902,7 +904,7 @@ function SendClipboard({ onItemAdded }) {
                   type="button"
                   onClick={chooseImage}
                   disabled={isSending}
-                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   <ImagePlus size={17} />
                   Ajouter des images
@@ -916,7 +918,7 @@ function SendClipboard({ onItemAdded }) {
                 type="button"
                 onClick={clearImages}
                 disabled={isSending}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
               >
                 <X size={17} />
                 Annuler
@@ -940,23 +942,23 @@ function SendClipboard({ onItemAdded }) {
         ) : (
           <>
             {/* Liste des documents sélectionnés */}
-            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
               {documents.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
+                  className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                 >
                   <FileText size={24} className="shrink-0 text-blue-600" />
 
                   <div className="min-w-0 flex-1">
                     <p
-                      className="truncate text-sm font-medium text-slate-800"
+                      className="truncate text-sm font-medium text-slate-800 dark:text-zinc-100"
                       title={item.file.name}
                     >
                       {item.file.name}
                     </p>
 
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
                       {sizeInMo(item.file.size)} Mo
                     </p>
                   </div>
@@ -966,7 +968,7 @@ function SendClipboard({ onItemAdded }) {
                     onClick={() => removeDocument(item.id)}
                     disabled={isSending}
                     aria-label={`Retirer ${item.file.name}`}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                   >
                     <X size={18} />
                   </button>
@@ -975,7 +977,7 @@ function SendClipboard({ onItemAdded }) {
             </div>
 
             {/* Compteur et ajout */}
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500 dark:text-zinc-400">
               <span>
                 {documents.length} / {MAX_DOCUMENTS} fichiers ·{" "}
                 {sizeInMo(
@@ -989,7 +991,7 @@ function SendClipboard({ onItemAdded }) {
                   type="button"
                   onClick={chooseDocument}
                   disabled={isSending}
-                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 disabled:opacity-60 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   <FileUp size={17} />
                   Ajouter des fichiers
@@ -1003,7 +1005,7 @@ function SendClipboard({ onItemAdded }) {
                 type="button"
                 onClick={clearDocuments}
                 disabled={isSending}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
               >
                 <X size={17} />
                 Annuler
@@ -1100,7 +1102,10 @@ function SendClipboard({ onItemAdded }) {
 
       {/* Messages de réussite ou d'erreur */}
       {message && (
-        <p role="status" className="mt-4 text-sm text-slate-600">
+        <p
+          role="status"
+          className="mt-4 text-sm text-slate-600 dark:text-zinc-300"
+        >
           {message}
         </p>
       )}
