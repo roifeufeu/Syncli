@@ -57,7 +57,26 @@
   text-decoration: underline;
 }
 
-/* Masquer le footer lorsque SynCli est installée en PWA */
+/* Mode sombre */
+.dark .app-footer {
+  border-top-color: #27272a;
+  background: #18181b;
+  color: #a1a1aa;
+}
+
+.dark .footer-name {
+  color: #fafafa;
+}
+
+.dark .footer-bottom a {
+  color: #60a5fa;
+}
+
+.dark .footer-bottom a:hover {
+  color: #93c5fd;
+}
+
+/* Masquer le footer lorsque Syncli est installée en PWA */
 @media (display-mode: standalone) {
   .app-footer {
     display: none;
