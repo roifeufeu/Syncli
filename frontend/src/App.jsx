@@ -12,6 +12,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [message, setMessage] = useState("");
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [storageSnapshot, setStorageSnapshot] = useState(null);
   const [authMode, setAuthMode] = useState("login");
 
   useEffect(() => {
@@ -80,7 +81,15 @@ function App() {
   if (session) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-50">
-        <Header email={session.user.email} onLogout={logout} />
+        <Header
+          email={session.user.email}
+          onLogout={logout}
+          storageItems={
+            storageSnapshot?.userId === session.user.id
+              ? storageSnapshot.items
+              : null
+          }
+        />
 
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
           <SendClipboard
@@ -88,7 +97,12 @@ function App() {
           />
 
           <section className="mt-10">
-            <ClipboardHistory refreshKey={historyVersion} />
+            <ClipboardHistory
+              key={session.user.id}
+              refreshKey={historyVersion}
+              onItemsChange={setStorageSnapshot}
+              storageUserId={session.user.id}
+            />
           </section>
         </main>
 

@@ -9,7 +9,7 @@ import {
 import StorageUsage from "./StorageUsage";
 import { useTheme } from "../theme-context";
 
-function Header({ email, onLogout }) {
+function Header({ email, onLogout, storageItems }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -64,7 +64,7 @@ function Header({ email, onLogout }) {
 
               <hr className="my-3 border-slate-200 dark:border-zinc-700" />
 
-              <StorageUsage />
+              <StorageUsage items={storageItems} />
 
               <hr className="my-3 border-slate-200 dark:border-zinc-700" />
 

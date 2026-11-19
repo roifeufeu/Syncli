@@ -70,7 +70,7 @@ function sizeLabel(bytes) {
   })} Mo`;
 }
 
-function ClipboardHistory({ refreshKey }) {
+function ClipboardHistory({ refreshKey, onItemsChange, storageUserId }) {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState("all");
   const [expandedIds, setExpandedIds] = useState([]);
@@ -82,6 +82,14 @@ function ClipboardHistory({ refreshKey }) {
   const [editingId, setEditingId] = useState(null);
   const [draftText, setDraftText] = useState("");
   const [savingId, setSavingId] = useState(null);
+
+  // Partager les éléments avec App pour calculer le stockage localement.
+  useEffect(() => {
+    onItemsChange?.({
+      userId: storageUserId,
+      items: loading || loadError ? null : items,
+    });
+  }, [items, loading, loadError, onItemsChange, storageUserId]);
 
   useEffect(() => {
     let active = true;
