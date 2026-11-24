@@ -3,6 +3,40 @@ import { createPortal } from "react-dom";
 import { ArrowRight, LockKeyhole, Mail, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+function getAuthErrorMessage(error) {
+  if (error instanceof TypeError) {
+    return "Impossible de contacter le serveur. Vérifie ta connexion.";
+  }
+
+  switch (error?.code) {
+    case "invalid_credentials":
+      return "Adresse e-mail ou mot de passe incorrect.";
+
+    case "email_not_confirmed":
+      return "Cette adresse e-mail n'a pas encore été confirmée.";
+
+    case "email_exists":
+    case "user_already_exists":
+      return "Un compte existe déjà avec cette adresse e-mail.";
+
+    case "weak_password":
+      return "Ce mot de passe ne respecte pas les règles de sécurité.";
+
+    case "email_address_invalid":
+      return "Cette adresse e-mail n'est pas valide.";
+
+    case "over_request_rate_limit":
+    case "over_email_send_rate_limit":
+      return "Trop de tentatives. Réessaie un peu plus tard.";
+
+    case "signup_disabled":
+      return "Les inscriptions sont temporairement désactivées.";
+
+    default:
+      return "Une erreur est survenue. Réessaie.";
+  }
+}
+
 function AuthModal({ open, onClose }) {
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -70,7 +104,8 @@ function AuthModal({ open, onClose }) {
         }
       }
     } catch (error) {
-      setMessage(error.message || "Une erreur est survenue.");
+      console.error("[Syncli Auth]", error);
+      setMessage(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
