@@ -27,7 +27,11 @@ const ALLOWED_DOCUMENT_EXTENSIONS = [
   "zip",
 ];
 
-function SendClipboard({ onItemAdded }) {
+function SendClipboard({
+  onItemAdded,
+  isAuthenticated = true,
+  onAuthRequired,
+}) {
   const [text, setText] = useState("");
   const [images, setImages] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -360,6 +364,11 @@ function SendClipboard({ onItemAdded }) {
   const sendText = async () => {
     if (sendingRef.current || !text.trim()) return;
 
+    if (!isAuthenticated) {
+      onAuthRequired?.();
+      return;
+    }
+
     sendingRef.current = true;
     setIsSending(true);
     setMessage("");
@@ -420,6 +429,11 @@ function SendClipboard({ onItemAdded }) {
   // Envoi des images une par une avec notre route existante.
   const sendImages = async () => {
     if (imagesRef.current.length === 0 || sendingRef.current) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      onAuthRequired?.();
       return;
     }
 
@@ -522,6 +536,11 @@ function SendClipboard({ onItemAdded }) {
 
   const sendDocuments = async () => {
     if (documentsRef.current.length === 0 || sendingRef.current) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      onAuthRequired?.();
       return;
     }
 
