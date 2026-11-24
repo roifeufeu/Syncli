@@ -74,8 +74,17 @@ function AuthModal({ open, onClose }) {
     event.preventDefault();
     if (loading) return;
 
-    setLoading(true);
     setMessage("");
+
+    // Vérifier la longueur uniquement lors de l'inscription.
+    if (authMode === "register") {
+      if (password.length < 6 || password.length > 30) {
+        setMessage("Le mot de passe doit contenir entre 6 et 30 caractères.");
+        return;
+      }
+    }
+
+    setLoading(true);
 
     try {
       if (authMode === "login") {
