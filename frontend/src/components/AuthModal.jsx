@@ -95,7 +95,7 @@ function AuthModal({ open, onClose }) {
             id="auth-modal-title"
             className="text-2xl font-semibold text-slate-900 dark:text-zinc-50"
           >
-            {authMode === "login" ? "Bon retour !" : "Créer un compte"}
+            {authMode === "login" ? "Se connecter" : "Créer un compte"}
           </h2>
 
           <button
