@@ -113,10 +113,34 @@ function AuthModal({ open, onClose }) {
           password,
           options: {
             data: {
-              syncli_signup_username: username.trim(),
+              syncli_signup_username: cleanUsername,
             },
           },
         });
+
+        const cleanUsername = username.trim();
+
+        // Vérifier que le pseudo est disponible.
+        const { data: isAvailable, error: availabilityError } =
+          await supabase.rpc("is_username_available", {
+            candidate_username: cleanUsername,
+          });
+
+        if (availabilityError) {
+          console.error("[Syncli] Vérification du pseudo :", availabilityError);
+
+          setMessage(
+            "Impossible de vérifier la disponibilité du pseudo. Réessaie.",
+          );
+          return;
+        }
+
+        if (!isAvailable) {
+          setMessage(
+            "Ce pseudo est invalide ou déjà utilisé. Choisis-en un autre.",
+          );
+          return;
+        }
 
         if (error) throw error;
 
