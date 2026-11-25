@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, LockKeyhole, Mail, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import PasswordRecovery from "./PasswordRecovery";
 
 function getAuthErrorMessage(error) {
   if (error instanceof TypeError) {
@@ -209,7 +210,11 @@ function AuthModal({ open, onClose }) {
             id="auth-modal-title"
             className="text-2xl font-semibold text-slate-900 dark:text-zinc-50"
           >
-            {authMode === "login" ? "Se connecter" : "Créer un compte"}
+            {authMode === "login"
+              ? "Se connecter"
+              : authMode === "register"
+                ? "Créer un compte"
+                : "Mot de passe oublié"}
           </h2>
 
           <button
@@ -223,161 +228,181 @@ function AuthModal({ open, onClose }) {
           </button>
         </div>
 
-        <p className="mb-6 text-sm text-slate-500 dark:text-zinc-400">
-          {authMode === "login"
-            ? "Connectez-vous pour retrouver vos éléments."
-            : "Créez votre espace presse-papiers personnel."}
-        </p>
+        {authMode !== "recovery" && (
+          <p className="mb-6 text-sm text-slate-500 dark:text-zinc-400">
+            {authMode === "login"
+              ? "Connectez-vous pour retrouver vos éléments."
+              : "Créez votre espace presse-papiers personnel."}
+          </p>
+        )}
 
-        <div className="mb-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-zinc-800">
-          {[
-            { value: "login", label: "Connexion" },
-            { value: "register", label: "Inscription" },
-          ].map((mode) => (
-            <button
-              key={mode.value}
-              type="button"
-              onClick={() => changeMode(mode.value)}
-              disabled={loading}
-              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
-                authMode === mode.value
-                  ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-700 dark:text-blue-400"
-                  : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
+        {authMode !== "recovery" && (
+          <div className="mb-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-zinc-800">
+            {[
+              { value: "login", label: "Connexion" },
+              { value: "register", label: "Inscription" },
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => changeMode(mode.value)}
+                disabled={loading}
+                className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                  authMode === mode.value
+                    ? "bg-white text-blue-600 shadow-sm dark:bg-zinc-700 dark:text-blue-400"
+                    : "text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white"
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            {/* Pseudo : uniquement pendant l'inscription */}
-            {authMode === "register" && (
-              <div className="mb-5">
-                <label
-                  htmlFor="modal-username"
-                  className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
-                >
-                  Pseudo
-                </label>
+        {authMode === "recovery" ? (
+          <PasswordRecovery onBack={() => changeMode("login")} />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              {/* Pseudo : uniquement pendant l'inscription */}
+              {authMode === "register" && (
+                <div className="mb-5">
+                  <label
+                    htmlFor="modal-username"
+                    className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
+                  >
+                    Pseudo
+                  </label>
+
+                  <input
+                    id="modal-username"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    maxLength={30}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Choisissez votre pseudo"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-blue-500/20"
+                  />
+                </div>
+              )}
+
+              <label
+                htmlFor="modal-email"
+                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
+              >
+                {authMode === "login" ? "Pseudo ou e-mail" : "Adresse e-mail"}
+              </label>
+
+              <div className="relative">
+                <Mail
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
 
                 <input
-                  id="modal-username"
-                  type="text"
-                  autoComplete="username"
+                  id="modal-email"
+                  type={authMode === "login" ? "text" : "email"}
+                  autoComplete={authMode === "login" ? "username" : "email"}
                   required
-                  maxLength={30}
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="Choisissez votre pseudo"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-blue-500/20"
+                  autoFocus
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={
+                    authMode === "login"
+                      ? "Pseudo ou adresse e-mail"
+                      : "exemple@email.com"
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-blue-500/20"
                 />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="modal-password"
+                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
+              >
+                Mot de passe
+              </label>
+
+              <div className="relative">
+                <LockKeyhole
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+
+                <input
+                  id="modal-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    authMode === "login" ? "current-password" : "new-password"
+                  }
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Votre mot de passe"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-blue-500/20"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((previous) => !previous)}
+                  aria-label={
+                    showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  title={
+                    showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:text-zinc-100"
+                >
+                  {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
+            </div>
+
+            {authMode === "login" && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => changeMode("recovery")}
+                  className="text-sm font-medium text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Mot de passe oublié ?
+                </button>
               </div>
             )}
 
-            <label
-              htmlFor="modal-email"
-              className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
-            >
-              {authMode === "login" ? "Pseudo ou e-mail" : "Adresse e-mail"}
-            </label>
-
-            <div className="relative">
-              <Mail
-                size={18}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
-              <input
-                id="modal-email"
-                type={authMode === "login" ? "text" : "email"}
-                autoComplete={authMode === "login" ? "username" : "email"}
-                required
-                autoFocus
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={
-                  authMode === "login"
-                    ? "Pseudo ou adresse e-mail"
-                    : "exemple@email.com"
-                }
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-blue-500/20"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="modal-password"
-              className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
-            >
-              Mot de passe
-            </label>
-
-            <div className="relative">
-              <LockKeyhole
-                size={18}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
-              <input
-                id="modal-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete={
-                  authMode === "login" ? "current-password" : "new-password"
-                }
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Votre mot de passe"
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-12 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-blue-500/20"
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword((previous) => !previous)}
-                aria-label={
-                  showPassword
-                    ? "Masquer le mot de passe"
-                    : "Afficher le mot de passe"
-                }
-                title={
-                  showPassword
-                    ? "Masquer le mot de passe"
-                    : "Afficher le mot de passe"
-                }
-                aria-pressed={showPassword}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-400 transition hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:text-zinc-100"
+            {message && (
+              <p
+                role="status"
+                className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700 dark:bg-zinc-800 dark:text-zinc-200"
               >
-                {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
-              </button>
-            </div>
-          </div>
+                {message}
+              </p>
+            )}
 
-          {message && (
-            <p
-              role="status"
-              className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700 dark:bg-zinc-800 dark:text-zinc-200"
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
             >
-              {message}
-            </p>
-          )}
+              {loading
+                ? "Chargement..."
+                : authMode === "login"
+                  ? "Se connecter"
+                  : "Créer mon compte"}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-          >
-            {loading
-              ? "Chargement..."
-              : authMode === "login"
-                ? "Se connecter"
-                : "Créer mon compte"}
-
-            {!loading && <ArrowRight size={18} />}
-          </button>
-        </form>
+              {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
+        )}
       </div>
     </div>,
     document.body,
