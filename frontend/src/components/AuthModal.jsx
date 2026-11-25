@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ArrowRight, LockKeyhole, Mail, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PasswordRecovery from "./PasswordRecovery";
+import PasswordReset from "./PasswordReset";
 
 function getAuthErrorMessage(error) {
   if (error instanceof TypeError) {
@@ -38,7 +39,12 @@ function getAuthErrorMessage(error) {
   }
 }
 
-function AuthModal({ open, onClose }) {
+function AuthModal({
+  open,
+  onClose,
+  passwordReset = false,
+  onPasswordResetComplete,
+}) {
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,9 +57,10 @@ function AuthModal({ open, onClose }) {
     if (!open) return;
 
     const handleEscape = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !passwordReset) {
+        onClose();
+      }
     };
-
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -63,7 +70,7 @@ function AuthModal({ open, onClose }) {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open, onClose]);
+  }, [open, onClose, passwordReset]);
 
   if (!open) return null;
 
@@ -194,7 +201,11 @@ function AuthModal({ open, onClose }) {
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !loading) {
+        if (
+          event.target === event.currentTarget &&
+          !loading &&
+          !passwordReset
+        ) {
           onClose();
         }
       }}
@@ -210,25 +221,29 @@ function AuthModal({ open, onClose }) {
             id="auth-modal-title"
             className="text-2xl font-semibold text-slate-900 dark:text-zinc-50"
           >
-            {authMode === "login"
-              ? "Se connecter"
-              : authMode === "register"
-                ? "Créer un compte"
-                : "Mot de passe oublié"}
+            {passwordReset
+              ? "Nouveau mot de passe"
+              : authMode === "login"
+                ? "Se connecter"
+                : authMode === "register"
+                  ? "Créer un compte"
+                  : "Mot de passe oublié"}
           </h2>
 
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            aria-label="Fermer"
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            <X size={21} />
-          </button>
+          {!passwordReset && (
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              aria-label="Fermer"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              <X size={21} />
+            </button>
+          )}
         </div>
 
-        {authMode !== "recovery" && (
+        {!passwordReset && authMode !== "recovery" && (
           <p className="mb-6 text-sm text-slate-500 dark:text-zinc-400">
             {authMode === "login"
               ? "Connectez-vous pour retrouver vos éléments."
@@ -236,7 +251,7 @@ function AuthModal({ open, onClose }) {
           </p>
         )}
 
-        {authMode !== "recovery" && (
+        {!passwordReset && authMode !== "recovery" && (
           <div className="mb-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-zinc-800">
             {[
               { value: "login", label: "Connexion" },
@@ -259,7 +274,9 @@ function AuthModal({ open, onClose }) {
           </div>
         )}
 
-        {authMode === "recovery" ? (
+        {passwordReset ? (
+          <PasswordReset onComplete={onPasswordResetComplete} />
+        ) : authMode === "recovery" ? (
           <PasswordRecovery onBack={() => changeMode("login")} />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">

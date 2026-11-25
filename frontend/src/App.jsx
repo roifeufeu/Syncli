@@ -12,6 +12,7 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
 
   const [historyVersion, setHistoryVersion] = useState(0);
   const [storageSnapshot, setStorageSnapshot] = useState(null);
@@ -32,15 +33,23 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!active) return;
 
       authEventReceived = true;
       setSession(newSession);
       setAuthReady(true);
 
-      if (newSession) {
+      if (event === "PASSWORD_RECOVERY") {
+        // L'utilisateur arrive depuis un lien de récupération.
+        // On ouvre la fenêtre pour définir un nouveau mot de passe.
+        setPasswordResetOpen(true);
+        setAuthOpen(true);
+      } else if (event === "SIGNED_IN") {
+        // Connexion classique : fermer la fenêtre.
         setAuthOpen(false);
+      } else if (event === "SIGNED_OUT") {
+        setPasswordResetOpen(false);
       }
     });
 
@@ -129,7 +138,9 @@ function App() {
       <Header
         email={session?.user?.email}
         username={
-          profile?.userId === session?.user?.id ? profile.username : null
+          session && profile?.userId === session.user.id
+            ? profile.username
+            : null
         }
         onLogin={openAuth}
         onLogout={logout}
@@ -206,7 +217,16 @@ function App() {
       <Footer />
 
       {/* Fenêtre d'authentification superposée */}
-      <AuthModal open={authOpen} onClose={closeAuth} />
+
+      <AuthModal
+        open={authOpen}
+        onClose={closeAuth}
+        passwordReset={passwordResetOpen}
+        onPasswordResetComplete={() => {
+          setPasswordResetOpen(false);
+          setAuthOpen(false);
+        }}
+      />
     </div>
   );
 }
