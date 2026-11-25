@@ -41,6 +41,7 @@ function AuthModal({ open, onClose }) {
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,7 +78,17 @@ function AuthModal({ open, onClose }) {
     setMessage("");
 
     // Vérifier la longueur uniquement lors de l'inscription.
+
     if (authMode === "register") {
+      const cleanUsername = username.trim();
+
+      if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanUsername)) {
+        setMessage(
+          "Le pseudo doit contenir entre 3 et 30 caractères : lettres, chiffres et underscores uniquement.",
+        );
+        return;
+      }
+
       if (password.length < 6 || password.length > 30) {
         setMessage("Le mot de passe doit contenir entre 6 et 30 caractères.");
         return;
@@ -100,6 +111,11 @@ function AuthModal({ open, onClose }) {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
+          options: {
+            data: {
+              syncli_signup_username: username.trim(),
+            },
+          },
         });
 
         if (error) throw error;
@@ -183,6 +199,30 @@ function AuthModal({ open, onClose }) {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
+            {/* Pseudo : uniquement pendant l'inscription */}
+            {authMode === "register" && (
+              <div className="mb-5">
+                <label
+                  htmlFor="modal-username"
+                  className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
+                >
+                  Pseudo
+                </label>
+
+                <input
+                  id="modal-username"
+                  type="text"
+                  autoComplete="username"
+                  required
+                  maxLength={30}
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="Choisissez votre pseudo"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-blue-500/20"
+                />
+              </div>
+            )}
+
             <label
               htmlFor="modal-email"
               className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
