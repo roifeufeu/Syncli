@@ -77,11 +77,10 @@ function AuthModal({ open, onClose }) {
 
     setMessage("");
 
-    // Vérifier la longueur uniquement lors de l'inscription.
+    const cleanUsername = username.trim();
 
+    // Vérifications uniquement à l'inscription
     if (authMode === "register") {
-      const cleanUsername = username.trim();
-
       if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanUsername)) {
         setMessage(
           "Le pseudo doit contenir entre 3 et 30 caractères : lettres, chiffres et underscores uniquement.",
@@ -99,28 +98,49 @@ function AuthModal({ open, onClose }) {
 
     try {
       if (authMode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+        // Connexion par pseudo ou adresse e-mail
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/auth/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              identifier: email.trim(),
+              password,
+            }),
+          },
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          setMessage(data?.error || "Impossible de se connecter. Réessaie.");
+          return;
+        }
+
+        if (!data?.access_token || !data?.refresh_token) {
+          setMessage("Réponse de connexion invalide.");
+          return;
+        }
+
+        // Enregistrer la session dans le client Supabase du frontend
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
         });
 
-        if (error) throw error;
+        if (sessionError) {
+          setMessage("Impossible d'ouvrir la session. Réessaie.");
+          return;
+        }
 
         onClose();
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              syncli_signup_username: cleanUsername,
-            },
-          },
-        });
+        // INSCRIPTION
 
-        const cleanUsername = username.trim();
-
-        // Vérifier que le pseudo est disponible.
+        // 1. Vérifier si le pseudo est disponible
         const { data: isAvailable, error: availabilityError } =
           await supabase.rpc("is_username_available", {
             candidate_username: cleanUsername,
@@ -136,11 +156,20 @@ function AuthModal({ open, onClose }) {
         }
 
         if (!isAvailable) {
-          setMessage(
-            "Ce pseudo est invalide ou déjà utilisé. Choisis-en un autre.",
-          );
+          setMessage("Ce pseudo est déjà utilisé. Choisis-en un autre.");
           return;
         }
+
+        // 2. Créer le compte uniquement si le pseudo est disponible
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              syncli_signup_username: cleanUsername,
+            },
+          },
+        });
 
         if (error) throw error;
 
@@ -148,7 +177,7 @@ function AuthModal({ open, onClose }) {
           onClose();
         } else {
           setMessage(
-            "Inscription enregistrée. Vérifie ton e-mail si une confirmation est demandée.",
+            "Compte créé, mais la session n'a pas été ouverte. Essaie de te connecter.",
           );
         }
       }
@@ -251,7 +280,7 @@ function AuthModal({ open, onClose }) {
               htmlFor="modal-email"
               className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-200"
             >
-              Adresse e-mail
+              {authMode === "login" ? "Pseudo ou e-mail" : "Adresse e-mail"}
             </label>
 
             <div className="relative">
@@ -262,13 +291,17 @@ function AuthModal({ open, onClose }) {
 
               <input
                 id="modal-email"
-                type="email"
-                autoComplete="email"
+                type={authMode === "login" ? "text" : "email"}
+                autoComplete={authMode === "login" ? "username" : "email"}
                 required
                 autoFocus
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="exemple@email.com"
+                placeholder={
+                  authMode === "login"
+                    ? "Pseudo ou adresse e-mail"
+                    : "exemple@email.com"
+                }
                 className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-blue-500/20"
               />
             </div>

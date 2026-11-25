@@ -11,7 +11,7 @@ import {
 import StorageUsage from "./StorageUsage";
 import { useTheme } from "../theme-context";
 
-function Header({ email, onLogout, onLogin, storageItems }) {
+function Header({ email, username, onLogout, onLogin, storageItems }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -76,7 +76,7 @@ function Header({ email, onLogout, onLogin, storageItems }) {
               <UserRound size={18} />
 
               <span className="hidden max-w-40 truncate text-sm sm:inline">
-                {email}
+                {username || "Compte"}
               </span>
 
               <ChevronDown size={16} />
@@ -90,7 +90,7 @@ function Header({ email, onLogout, onLogin, storageItems }) {
                 </p>
 
                 <p className="mt-1 break-all text-sm font-medium text-slate-800 dark:text-zinc-100">
-                  {email}
+                  {username || "Compte"}
                 </p>
 
                 <hr className="my-3 border-slate-200 dark:border-zinc-700" />

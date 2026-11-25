@@ -9,6 +9,7 @@ import { LockKeyhole } from "lucide-react";
 
 function App() {
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -69,6 +70,40 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const userId = session?.user?.id;
+
+    if (!userId) return;
+
+    let active = true;
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (error) {
+        console.error("Erreur récupération du pseudo :", error);
+        return;
+      }
+
+      setProfile({
+        userId,
+        username: data?.username ?? null,
+      });
+    };
+
+    void loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id]);
+
   const logout = async () => {
     setLogoutError("");
 
@@ -93,6 +128,9 @@ function App() {
       {/* En-tête */}
       <Header
         email={session?.user?.email}
+        username={
+          profile?.userId === session?.user?.id ? profile.username : null
+        }
         onLogin={openAuth}
         onLogout={logout}
         storageItems={storageItems}

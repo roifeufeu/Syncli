@@ -192,6 +192,127 @@ app.get("/", (req, res) => {
   res.json({ message: "Backend OK" });
 });
 
+/*
+ * Connexion avec un pseudo OU une adresse e-mail.
+ * Le mot de passe est toujours vérifié par Supabase Auth.
+ */
+app.post("/auth/login", async (req, res) => {
+  const { identifier, password } = req.body || {};
+
+  const invalidCredentials = () =>
+    res.status(401).json({
+      success: false,
+      error: "Identifiant ou mot de passe incorrect.",
+    });
+
+  if (
+    typeof identifier !== "string" ||
+    typeof password !== "string" ||
+    !identifier.trim() ||
+    !password
+  ) {
+    return invalidCredentials();
+  }
+
+  const cleanIdentifier = identifier.trim();
+
+  try {
+    let email = cleanIdentifier;
+
+    // Si l'identifiant ne contient pas @, c'est un pseudo.
+    if (!cleanIdentifier.includes("@")) {
+      if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanIdentifier)) {
+        return invalidCredentials();
+      }
+
+      // Retrouver l'ID associé au pseudo.
+      const { data: userId, error: lookupError } = await adminSupabase.rpc(
+        "get_profile_id_for_login",
+        {
+          candidate_username: cleanIdentifier,
+        },
+      );
+
+      if (lookupError) {
+        console.error("Erreur recherche pseudo :", lookupError);
+
+        return res.status(500).json({
+          success: false,
+          error: "Connexion momentanément indisponible.",
+        });
+      }
+
+      if (!userId) {
+        return invalidCredentials();
+      }
+
+      // Retrouver l'e-mail, uniquement côté backend.
+      const { data: userData, error: userError } =
+        await adminSupabase.auth.admin.getUserById(userId);
+
+      if (userError || !userData?.user?.email) {
+        console.error("Erreur récupération compte :", userError);
+
+        return res.status(500).json({
+          success: false,
+          error: "Connexion momentanément indisponible.",
+        });
+      }
+
+      email = userData.user.email;
+    }
+
+    // Client isolé pour chaque tentative de connexion.
+    // On ne connecte jamais l'utilisateur au client administrateur.
+    const loginSupabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+
+    const { data, error } = await loginSupabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      if (error.status === 429) {
+        return res.status(429).json({
+          success: false,
+          error: "Trop de tentatives. Réessaie plus tard.",
+        });
+      }
+
+      return invalidCredentials();
+    }
+
+    if (!data?.session?.access_token || !data.session.refresh_token) {
+      return invalidCredentials();
+    }
+
+    // Les jetons permettront au frontend d'ouvrir
+    // la session avec son propre client Supabase.
+    return res.json({
+      success: true,
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+  } catch (error) {
+    console.error("Erreur connexion :", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Connexion momentanément indisponible.",
+    });
+  }
+});
+
 app.post("/items/text", async (req, res) => {
   const authHeader = req.headers.authorization;
 
