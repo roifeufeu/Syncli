@@ -45,6 +45,7 @@ function AuthModal({
   onClose,
   passwordReset = false,
   onPasswordResetComplete,
+  onBeforeGoogleSignIn,
 }) {
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -87,6 +88,18 @@ function AuthModal({
     setMessage("");
 
     try {
+      // Sauvegarder le brouillon avant de quitter Syncli.
+      try {
+        await onBeforeGoogleSignIn?.();
+      } catch (error) {
+        console.error("[Syncli] Sauvegarde du brouillon :", error);
+
+        setMessage(
+          "Impossible de sauvegarder votre sélection. La connexion Google n'a pas été lancée pour éviter de perdre vos éléments.",
+        );
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

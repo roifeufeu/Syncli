@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
 import SendClipboard from "./components/SendClipboard";
 import ClipboardHistory from "./components/ClipboardHistory";
@@ -8,6 +8,7 @@ import Footer from "./components/Footer";
 import { LockKeyhole } from "lucide-react";
 
 function App() {
+  const draftRef = useRef(null);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -162,6 +163,7 @@ function App() {
 
         {/* Le formulaire reste monté pendant la connexion. */}
         <SendClipboard
+          draftRef={draftRef}
           isAuthenticated={isAuthenticated}
           onAuthRequired={openAuth}
           onItemAdded={() => setHistoryVersion((version) => version + 1)}
@@ -224,6 +226,7 @@ function App() {
       <AuthModal
         open={authOpen}
         onClose={closeAuth}
+        onBeforeGoogleSignIn={() => draftRef.current?.saveGoogleDraft()}
         passwordReset={passwordResetOpen}
         onPasswordResetComplete={() => {
           setPasswordResetOpen(false);

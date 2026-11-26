@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { supabase } from "../lib/supabase";
 import { ImagePlus, FileUp, FileText, Send, X } from "lucide-react";
+import {
+  saveGoogleDraft,
+  loadGoogleDraft,
+  clearGoogleDraft,
+} from "../lib/oauthDraft";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGES = 10;
@@ -31,6 +42,7 @@ function SendClipboard({
   onItemAdded,
   isAuthenticated = true,
   onAuthRequired,
+  draftRef,
 }) {
   const [text, setText] = useState("");
   const [images, setImages] = useState([]);
@@ -43,6 +55,20 @@ function SendClipboard({
   const imagesRef = useRef([]);
   const documentsRef = useRef([]);
   const documentInputRef = useRef(null);
+
+  useImperativeHandle(
+    draftRef,
+    () => ({
+      saveGoogleDraft: () =>
+        saveGoogleDraft({
+          text,
+          images: imagesRef.current,
+          documents: documentsRef.current,
+        }),
+    }),
+    [text],
+  );
+
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -68,6 +94,64 @@ function SendClipboard({
     documentsRef.current = nextDocuments;
     setDocuments(nextDocuments);
   };
+
+  useEffect(() => {
+    let active = true;
+
+    const restoreDraft = async () => {
+      try {
+        const draft = await loadGoogleDraft();
+
+        if (!active || !draft) return;
+
+        // Restaurer le texte.
+        if (draft.text) {
+          setText((current) => current || draft.text);
+        }
+
+        // Restaurer les images et recréer leurs prévisualisations.
+        if (draft.images?.length && imagesRef.current.length === 0) {
+          const restoredImages = draft.images.map(({ id, file }) => ({
+            id,
+            file,
+            previewUrl: URL.createObjectURL(file),
+          }));
+
+          updateImages(restoredImages);
+        }
+
+        // Restaurer les documents.
+        if (draft.documents?.length && documentsRef.current.length === 0) {
+          const restoredDocuments = draft.documents.map(({ id, file }) => ({
+            id,
+            file,
+          }));
+
+          documentsRef.current = restoredDocuments;
+          setDocuments(restoredDocuments);
+        }
+
+        // Le brouillon a été récupéré : supprimer la copie temporaire.
+        await clearGoogleDraft();
+
+        if (active) {
+          setMessage("Brouillon restauré. Vous pouvez maintenant l'envoyer.");
+        }
+      } catch (error) {
+        console.error("[Syncli] Restauration du brouillon :", error);
+
+        if (active) {
+          setMessage("Impossible de restaurer le brouillon sauvegardé.");
+        }
+      }
+    };
+
+    void restoreDraft();
+
+    return () => {
+      active = false;
+    };
+  }, [updateImages]);
 
   const chooseDocument = () => {
     documentInputRef.current?.click();
