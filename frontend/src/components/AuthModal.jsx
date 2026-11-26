@@ -4,6 +4,7 @@ import { ArrowRight, LockKeyhole, Mail, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PasswordRecovery from "./PasswordRecovery";
 import PasswordReset from "./PasswordReset";
+import { FcGoogle } from "react-icons/fc";
 
 function getAuthErrorMessage(error) {
   if (error instanceof TypeError) {
@@ -77,6 +78,30 @@ function AuthModal({
   const changeMode = (mode) => {
     setAuthMode(mode);
     setMessage("");
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("[Syncli Google Auth]", error);
+
+      setMessage("Impossible de lancer la connexion Google. Réessaie.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -417,6 +442,28 @@ function AuthModal({
                   : "Créer mon compte"}
 
               {!loading && <ArrowRight size={18} />}
+            </button>
+
+            {/* Séparation entre authentification classique et Google */}
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-zinc-700" />
+
+              <span className="text-xs text-slate-500 dark:text-zinc-400">
+                ou
+              </span>
+
+              <div className="h-px flex-1 bg-slate-200 dark:bg-zinc-700" />
+            </div>
+
+            {/* Connexion Google */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              <FcGoogle size={20} />
+              <span>Continuer avec Google</span>
             </button>
           </form>
         )}
