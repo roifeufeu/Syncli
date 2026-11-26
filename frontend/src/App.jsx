@@ -138,8 +138,11 @@ function App() {
       <Header
         email={session?.user?.email}
         username={
-          session && profile?.userId === session.user.id
-            ? profile.username
+          session
+            ? (profile?.userId === session.user.id ? profile.username : null) ||
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              "Compte"
             : null
         }
         onLogin={openAuth}
